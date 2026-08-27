@@ -8,6 +8,13 @@
 import SwiftData
 import SwiftUI
 
+enum NoteSortOption: String, CaseIterable, Identifiable {
+    case updated = "Last Updated"
+    case created = "Date Created"
+
+    var id: Self { self }
+}
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var notes: [Note]
@@ -15,14 +22,27 @@ struct ContentView: View {
     @State private var isPresentingNewNote = false
     @State private var newNote = Note()
     @State private var searchText = ""
-    private var filteredNotes: [Note] {
-        guard !searchText.isEmpty else {
-            return notes
+    @State private var sortOption: NoteSortOption = .updated
+    
+    private var visibleNotes: [Note] {
+        let filtered: [Note]
+
+        if searchText.isEmpty {
+            filtered = notes
+        } else {
+            filtered = notes.filter { note in
+                note.title.localizedCaseInsensitiveContains(searchText)
+                    || note.body.localizedCaseInsensitiveContains(searchText)
+            }
         }
 
-        return notes.filter { note in
-            note.title.localizedCaseInsensitiveContains(searchText)
-                || note.body.localizedCaseInsensitiveContains(searchText)
+        return filtered.sorted { lhs, rhs in
+            switch sortOption {
+            case .updated:
+                return lhs.updatedAt > rhs.updatedAt
+            case .created:
+                return lhs.createdAt > rhs.createdAt
+            }
         }
     }
 
@@ -35,9 +55,11 @@ struct ContentView: View {
                         systemImage: "note.text",
                         description: Text("Create your first note to get started.")
                     )
+                } else if visibleNotes.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 } else {
                     List {
-                        ForEach(filteredNotes) { note in
+                        ForEach(visibleNotes) { note in
                             NavigationLink {
                                 NoteEditorView(note: note)
                             } label: {
@@ -57,11 +79,24 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Notes")
-            .searchable (
+            .searchable(
                 text: $searchText,
                 prompt: "Search notes"
-                )
+            )
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort", selection: $sortOption) {
+                            ForEach(NoteSortOption.allCases) { option in
+                                Text(option.rawValue)
+                                    .tag(option)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         newNote = Note()
@@ -80,7 +115,7 @@ struct ContentView: View {
                                     isPresentingNewNote = false
                                 }
                             }
-
+                            
                             ToolbarItem(placement: .confirmationAction) {
                                 Button("Save") {
                                     newNote.updatedAt = Date()
@@ -101,7 +136,7 @@ struct ContentView: View {
 
     private func deleteNotes(at offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(filteredNotes[index])
+            modelContext.delete(visibleNotes[index])
         }
     }
 }
