@@ -29,6 +29,6 @@ jobs:
           xcodebuild test \
             -project CaseNotes.xcodeproj \
             -scheme CaseNotes \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
             -only-testing:CaseNotesTests \
             CODE_SIGNING_ALLOWED=NO
