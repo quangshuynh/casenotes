@@ -14,15 +14,18 @@ final class Note {
     var body: String
     var createdAt: Date
     var updatedAt: Date
+    var isPinned: Bool = false
     init(
         title: String = "",
         body: String = "",
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        isPinned: Bool = false
     ) {
         self.title = title
         self.body = body
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.isPinned = isPinned
     }
 }

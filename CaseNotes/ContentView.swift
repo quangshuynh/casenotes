@@ -37,6 +37,9 @@ struct ContentView: View {
         }
 
         return filtered.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned
+            }
             switch sortOption {
             case .updated:
                 return lhs.updatedAt > rhs.updatedAt
@@ -64,8 +67,16 @@ struct ContentView: View {
                                 NoteEditorView(note: note)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(note.title)
-                                        .font(.headline)
+                                    HStack {
+                                        Text(note.title)
+                                            .font(.headline)
+                                        
+                                        if note.isPinned {
+                                            Image(systemName: "pin.fill")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
 
                                     Text(note.body)
                                         .font(.subheadline)
@@ -73,8 +84,19 @@ struct ContentView: View {
                                         .lineLimit(2)
                                 }
                             }
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    note.isPinned.toggle()
+                                } label: {
+                                    Label(
+                                        note.isPinned ? "Unpin" : "Pin",
+                                        systemImage: note.isPinned ? "pin.slash" : "pin"
+                                    )
+                                }
+                            }
                         }
                         .onDelete(perform: deleteNotes)
+
                     }
                 }
             }
