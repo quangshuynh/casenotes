@@ -5,10 +5,12 @@
 //  Created by q on 8/27/26.
 //
 
+import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-    @State private var notes: [Note] = [] // empty array
+    @Environment(\.modelContext) private var modelContext
+    @Query private var notes: [Note]
 
     @State private var isPresentingNewNote = false
     @State private var newNote = Note()
@@ -24,9 +26,9 @@ struct ContentView: View {
                     )
                 } else {
                     List {
-                        ForEach($notes) { $note in
+                        ForEach(notes) { note in
                             NavigationLink {
-                                NoteEditorView(note: $note)
+                                NoteEditorView(note: note)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(note.title)
@@ -39,9 +41,7 @@ struct ContentView: View {
                                 }
                             }
                         }
-                        .onDelete { indexSet in
-                            notes.remove(atOffsets: indexSet)
-                        }
+                        .onDelete(perform: deleteNotes)
                     }
                 }
             }
@@ -58,7 +58,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $isPresentingNewNote) {
                 NavigationStack {
-                    NoteEditorView(note: $newNote)
+                    NoteEditorView(note: newNote)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
                                 Button("Cancel") {
@@ -69,7 +69,7 @@ struct ContentView: View {
                             ToolbarItem(placement: .confirmationAction) {
                                 Button("Save") {
                                     newNote.updatedAt = Date()
-                                    notes.append(newNote)
+                                    modelContext.insert(newNote)
                                     isPresentingNewNote = false
                                 }
                                 .disabled(
@@ -83,8 +83,15 @@ struct ContentView: View {
             }
         }
     }
+
+    private func deleteNotes(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(notes[index])
+        }
+    }
 }
 
 #Preview {
     ContentView()
+        .modelContainer(for: Note.self, inMemory: true)
 }

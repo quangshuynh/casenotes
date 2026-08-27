@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct NoteEditorView: View {
-    @Binding var note: Note
+    @Bindable var note: Note
 
     var body: some View {
         Form {
@@ -27,11 +27,9 @@ struct NoteEditorView: View {
 #Preview {
     NavigationStack {
         NoteEditorView(
-            note: .constant(
-                Note(
-                    title: "Meeting Notes",
-                    body: "Follow up on the project timeline."
-                )
+            note: Note(
+                title: "Meeting Notes",
+                body: "Follow up on the project timeline."
             )
         )
     }

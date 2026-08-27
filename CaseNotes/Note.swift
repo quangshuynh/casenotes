@@ -6,22 +6,20 @@
 //
 
 import Foundation
+import SwiftData
 
-struct Note: Identifiable {
-    let id: UUID
+@Model
+final class Note {
     var title: String
     var body: String
-    let createdAt: Date
+    var createdAt: Date
     var updatedAt: Date
-
     init(
-        id: UUID = UUID(),
         title: String = "",
         body: String = "",
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
-        self.id = id
         self.title = title
         self.body = body
         self.createdAt = createdAt
