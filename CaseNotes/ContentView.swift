@@ -14,6 +14,17 @@ struct ContentView: View {
 
     @State private var isPresentingNewNote = false
     @State private var newNote = Note()
+    @State private var searchText = ""
+    private var filteredNotes: [Note] {
+        guard !searchText.isEmpty else {
+            return notes
+        }
+
+        return notes.filter { note in
+            note.title.localizedCaseInsensitiveContains(searchText)
+                || note.body.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -26,7 +37,7 @@ struct ContentView: View {
                     )
                 } else {
                     List {
-                        ForEach(notes) { note in
+                        ForEach(filteredNotes) { note in
                             NavigationLink {
                                 NoteEditorView(note: note)
                             } label: {
@@ -46,6 +57,10 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Notes")
+            .searchable (
+                text: $searchText,
+                prompt: "Search notes"
+                )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -86,7 +101,7 @@ struct ContentView: View {
 
     private func deleteNotes(at offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(notes[index])
+            modelContext.delete(filteredNotes[index])
         }
     }
 }

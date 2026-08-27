@@ -1,3 +1,10 @@
+//
+//  CaseNotesTests.swift
+//  CaseNotes
+//
+//  Created by q on 8/27/26.
+//
+
 import Foundation
 import SwiftData
 import Testing
