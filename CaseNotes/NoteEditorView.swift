@@ -36,6 +36,7 @@ struct NoteEditorView: View {
 
     private let mode: Mode
     private let originalDraft: NoteDraft
+    private let folders: [Folder]
     private let onSave: (NoteDraft) -> Void
 
     @State private var draft: NoteDraft
@@ -48,15 +49,19 @@ struct NoteEditorView: View {
     ///   - draft: The starting contents. For `.edit` this is built from the note
     ///     being revised, for `.create` it is usually empty.
     ///   - mode: Whether a new note is being composed or an existing one revised.
+    ///   - folders: Folders offered by the filing picker. Passed in rather than
+    ///     queried so the editor stays a plain view over its inputs.
     ///   - onSave: Receives the finished draft when the user confirms. The
     ///     caller decides how it is persisted.
     init(
         draft: NoteDraft,
         mode: Mode,
+        folders: [Folder],
         onSave: @escaping (NoteDraft) -> Void
     ) {
         self.mode = mode
         self.originalDraft = draft
+        self.folders = folders
         self.onSave = onSave
         _draft = State(initialValue: draft)
         _eventDateEnabled = State(initialValue: draft.eventDate != nil)
@@ -102,6 +107,19 @@ struct NoteEditorView: View {
                 }
             } footer: {
                 Text("Attach the date an event happened, separate from when the note was written.")
+            }
+            .listRowBackground(Theme.Colors.surface)
+
+            Section {
+                Picker("Folder", selection: $draft.folder) {
+                    Text("Unfiled").tag(Folder?.none)
+
+                    ForEach(folders) { folder in
+                        Text(folder.displayName).tag(Folder?.some(folder))
+                    }
+                }
+            } footer: {
+                Text("Filing a note does not change when it was last edited.")
             }
             .listRowBackground(Theme.Colors.surface)
         }
@@ -161,13 +179,14 @@ struct NoteEditorView: View {
                 title: "Meeting Notes",
                 body: "Follow up on the project timeline."
             ),
-            mode: .edit
+            mode: .edit,
+            folders: []
         ) { _ in }
     }
 }
 
 #Preview("Create") {
     NavigationStack {
-        NoteEditorView(draft: NoteDraft(), mode: .create) { _ in }
+        NoteEditorView(draft: NoteDraft(), mode: .create, folders: []) { _ in }
     }
 }

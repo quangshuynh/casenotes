@@ -14,6 +14,6 @@ struct CaseNotesApp: App {
         WindowGroup {
             AppLockView()
         }
-        .modelContainer(for: Note.self)
+        .modelContainer(for: [Note.self, Folder.self])
     }
 }

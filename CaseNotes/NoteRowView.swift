@@ -15,6 +15,12 @@ import SwiftUI
 struct NoteRowView: View {
     let note: Note
 
+    /// Whether to name the note's folder.
+    ///
+    /// Only worth showing when the list mixes folders together, which is why it
+    /// is off by default.
+    var showsFolder = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             HStack(spacing: Theme.Spacing.small) {
@@ -38,9 +44,20 @@ struct NoteRowView: View {
                     .lineLimit(2)
             }
 
-            metadata
-                .font(.caption)
-                .foregroundStyle(Theme.Colors.textTertiary)
+            HStack(spacing: Theme.Spacing.small) {
+                metadata
+
+                if showsFolder, let folder = note.folder {
+                    HStack(spacing: Theme.Spacing.xSmall) {
+                        Image(systemName: "folder")
+                        Text(folder.displayName)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("In folder \(folder.displayName)")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(Theme.Colors.textTertiary)
         }
         .padding(.vertical, Theme.Spacing.xSmall)
     }

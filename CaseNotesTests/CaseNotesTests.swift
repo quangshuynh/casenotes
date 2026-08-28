@@ -173,4 +173,106 @@ struct CaseNotesTests {
         #expect(draft.apply(to: note))
         #expect(note.eventDate == nil)
     }
+
+    @Test
+    func draftSeedsTheNotesFolder() throws {
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let folder = Folder(name: "Site Visits")
+        context.insert(folder)
+
+        let note = Note(title: "North Wing", folder: folder)
+        context.insert(note)
+
+        #expect(NoteDraft(note: note).folder?.name == "Site Visits")
+    }
+
+    @Test
+    func refilingANoteDoesNotChangeItsEditTimestamp() throws {
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let folder = Folder(name: "Site Visits")
+        context.insert(folder)
+
+        let updatedAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let note = Note(title: "North Wing", updatedAt: updatedAt)
+        context.insert(note)
+
+        var draft = NoteDraft(note: note)
+        draft.folder = folder
+
+        let didChange = draft.apply(
+            to: note,
+            at: Date(timeIntervalSince1970: 1_700_500_000)
+        )
+
+        #expect(didChange)
+        #expect(note.folder?.name == "Site Visits")
+        #expect(note.updatedAt == updatedAt)
+    }
+
+    @Test
+    func editingContentWhileRefilingStillUpdatesTheTimestamp() throws {
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let folder = Folder(name: "Site Visits")
+        context.insert(folder)
+
+        let editedAt = Date(timeIntervalSince1970: 1_700_500_000)
+        let note = Note(
+            title: "North Wing",
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_100)
+        )
+        context.insert(note)
+
+        var draft = NoteDraft(note: note)
+        draft.body = "Revised."
+        draft.folder = folder
+
+        draft.apply(to: note, at: editedAt)
+
+        #expect(note.folder?.name == "Site Visits")
+        #expect(note.updatedAt == editedAt)
+    }
+
+    @Test
+    func existingNoteStoresOpenAfterFoldersAreAdded() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-migration-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // Write a store using the schema as it stood before folders existed.
+        do {
+            let container = try ModelContainer(
+                for: Note.self,
+                configurations: ModelConfiguration(url: url)
+            )
+            let context = ModelContext(container)
+            context.insert(
+                Note(title: "Legacy Note", body: "Written before folders existed.")
+            )
+            try context.save()
+        }
+
+        // Reopen the same file with the current schema.
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(url: url)
+        )
+        let context = ModelContext(container)
+        let notes = try context.fetch(FetchDescriptor<Note>())
+
+        #expect(notes.count == 1)
+        #expect(notes.first?.title == "Legacy Note")
+        #expect(notes.first?.folder == nil)
+    }
 }

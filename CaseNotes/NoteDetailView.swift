@@ -5,6 +5,7 @@
 //  Created by q on 8/27/26.
 //
 
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -16,6 +17,7 @@ import UIKit
 struct NoteDetailView: View {
     let note: Note
 
+    @Query(sort: \Folder.name) private var folders: [Folder]
     @State private var isEditing = false
 
     var body: some View {
@@ -59,7 +61,11 @@ struct NoteDetailView: View {
         }
         .sheet(isPresented: $isEditing) {
             NavigationStack {
-                NoteEditorView(draft: NoteDraft(note: note), mode: .edit) { draft in
+                NoteEditorView(
+                    draft: NoteDraft(note: note),
+                    mode: .edit,
+                    folders: folders
+                ) { draft in
                     draft.apply(to: note)
                 }
             }
