@@ -29,9 +29,11 @@ rest.
 
 ## Verify, do not assume
 
-The simulator is available. Build it, run the tests, and look at the result.
+Use the verification the current environment supports. On macOS, build the app,
+run the tests, and inspect relevant behavior in Simulator. On Windows, do not
+claim or recommend running Apple-only tools; report the Mac checks that remain.
 Several defects in this codebase were found only by taking a screenshot: ink
-rendering white in dark mode, a title vanishing in a collapsed split view, a
+rendering white in dark mode, a title vanishing in a collapsed split view, and a
 badge landing on the wrong side of a chevron.
 
 When platform behavior is unclear, write a throwaway probe and read the real
@@ -60,8 +62,11 @@ compatibility before writing code, and prove the result with a test.
 
 ## Working rhythm
 
-Work in commit-sized pieces. Finish one coherent change, verify it, summarize
-what changed and what was checked, and propose a conventional commit message.
+Work in commit-sized pieces. For each implementation change, use the impact
+review in AGENTS.md to keep affected tests, documentation, configuration, and
+repository-facing material synchronized. Finish one coherent change, verify it,
+summarize what changed and what was checked, and propose a conventional commit
+message.
 
 **Never commit and never push unless explicitly instructed.** Leave the working
 tree for review.

@@ -31,6 +31,10 @@ If a run fails with `Invalid device state`, reset the simulator with
 `xcrun simctl shutdown all` and retry. That is environment noise, not a code
 failure, and must not be reported as one.
 
+Run Apple-only commands only on macOS. On Windows, perform the checks the
+environment supports and state which Xcode or Simulator checks still need to be
+run on a Mac. Never imply that an Apple-only check ran on Windows.
+
 ## Layout
 
 ```
@@ -81,20 +85,74 @@ The app target uses Xcode synchronized file groups. New files inside
 - Use synthetic content everywhere: tests, previews, fixtures, screenshots, docs,
   and commit history. Never real personal data.
 
+## Keep support files synchronized
+
+An implementation slice includes every test, document, and configuration change
+needed to keep the repository accurate. After changing implementation, review
+the impact on:
+
+- unit, UI, persistence, and migration tests
+- README, documentation pages, MkDocs navigation, limitations, project status,
+  roadmap material, and development instructions
+- screenshots and screenshot references
+- `AGENTS.md`, `CLAUDE.md`, comments, and public API documentation
+- `.gitignore`, GitHub Actions, Xcode project configuration, and shared schemes
+- accessibility behavior and documentation
+- privacy and security wording, especially after changes to authentication,
+  lifecycle handling, persistence, exports, sharing, clipboard use, drawings,
+  or files
+
+This is an impact review, not a requirement to edit every listed file. Leave
+accurate files alone and avoid documentation churn for internal refactors that
+do not change meaningful behavior or architecture. Search for stale terminology
+and contradictory descriptions before finishing.
+
+When a feature becomes implemented, remove it from limitations or planned-work
+material and document the implemented behavior. If a visible UI change makes a
+public screenshot materially inaccurate, flag the exact screen and state that
+needs recapturing. Do not fabricate a replacement, and use synthetic content
+only.
+
+Treat every `@Model` change as a schema change. Review existing stores,
+declaration-level defaults, optionality, relationships, delete rules, and
+migration behavior. Add behavioral coverage without weakening existing tests or
+adding tests solely to increase a count. Document a test count only after
+verifying it.
+
 ## Before you finish
 
-1. The build succeeds with no new warnings.
-2. The unit suite passes in full.
-3. `git diff` reviewed line by line, with no stray debug code, no leftover
+1. Review the implementation's repository-wide impact using the checklist above.
+2. The build succeeds with no new warnings where the environment supports it.
+3. Affected tests pass, including the full unit suite for application changes.
+4. Documentation builds when documentation or its configuration changed.
+5. Internal documentation links pass when relevant.
+6. `git diff` reviewed line by line, with no stray debug code, no leftover
    scaffolding, and no unrelated changes.
-4. `git status` shows only files you meant to touch.
-5. No em dashes anywhere:
+7. `git status` shows only files you meant to touch, with no generated or
+   machine-specific files.
+8. No em dashes anywhere:
    `grep -rn $'\u2014' CaseNotes CaseNotesTests CaseNotesUITests *.md`
    (the escape is used so this command does not match its own documentation)
-6. Documentation and README still describe what the code actually does.
+9. Documentation and README still describe what the code actually does.
+10. No real personal or private content was introduced.
 
 If verification was skipped or a step failed, say so plainly. Do not report work
 as done when it is not.
+
+For an implementation slice, the final report states:
+
+1. implementation changes
+2. tests added or updated
+3. documentation updated
+4. configuration or CI updated
+5. screenshots needing recapture
+6. files changed
+7. verification performed and results
+8. manual verification still required
+9. intentionally unchanged related files and why
+10. migration or persistence implications
+11. privacy or accessibility implications
+12. a suggested conventional commit message
 
 ## Git
 
