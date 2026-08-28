@@ -275,4 +275,47 @@ struct CaseNotesTests {
         #expect(notes.first?.title == "Legacy Note")
         #expect(notes.first?.folder == nil)
     }
+
+    @Test
+    func draftsAreEqualOnlyWhenEveryFieldMatches() {
+        let eventDate = Date(timeIntervalSince1970: 1_700_086_400)
+        let draft = NoteDraft(
+            title: "North Wing",
+            body: "Walked the wing.",
+            eventDate: eventDate
+        )
+
+        #expect(draft == NoteDraft(
+            title: "North Wing",
+            body: "Walked the wing.",
+            eventDate: eventDate
+        ))
+
+        var edited = draft
+        edited.body = "Walked the wing twice."
+        #expect(edited != draft)
+
+        var redated = draft
+        redated.eventDate = nil
+        #expect(redated != draft)
+    }
+
+    @Test
+    func changingOnlyTheFolderMakesADraftUnequal() throws {
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let folder = Folder(name: "Site Visits")
+        context.insert(folder)
+
+        let draft = NoteDraft(title: "North Wing")
+        var refiled = draft
+        refiled.folder = folder
+
+        // Equality is what the editor uses to decide whether closing needs a
+        // discard confirmation, so refiling has to register as a change.
+        #expect(refiled != draft)
+    }
 }

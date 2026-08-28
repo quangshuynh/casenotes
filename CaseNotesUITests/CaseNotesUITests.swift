@@ -7,37 +7,43 @@
 
 import XCTest
 
+/// End-to-end coverage for the one behavior unit tests cannot reach: that a
+/// launched app really does put the lock in front of the notes.
+///
+/// Everything else worth asserting about notes, folders, Markdown, export, and
+/// drawings is covered by unit tests, which are faster and do not depend on the
+/// state of a particular simulator.
 final class CaseNotesUITests: XCTestCase {
-
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
+    /// The app must never show note content before the user authenticates.
+    ///
+    /// Assertions use `exists` rather than hit testing on purpose: when the
+    /// simulator has biometry enrolled, the system authentication sheet is
+    /// covering the app's own interface at this point, and the test should pass
+    /// either way.
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testLaunchingShowsTheLockScreenAndNoNotes() throws {
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
-    }
-
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+        XCTAssertTrue(
+            app.staticTexts["CaseNotes Locked"].waitForExistence(timeout: 30),
+            "The lock screen should be presented on launch."
+        )
+        XCTAssertTrue(
+            app.buttons["Unlock"].exists,
+            "A locked app should offer a way to authenticate."
+        )
+        XCTAssertFalse(
+            app.searchFields["Search notes"].exists,
+            "Notes must not be reachable before authenticating."
+        )
+        XCTAssertFalse(
+            app.buttons["New Note"].exists,
+            "Note creation must not be reachable before authenticating."
+        )
     }
 }

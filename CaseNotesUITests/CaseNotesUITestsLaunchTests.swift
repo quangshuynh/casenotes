@@ -7,8 +7,11 @@
 
 import XCTest
 
+/// Captures a launch screenshot for each target application UI configuration.
+///
+/// Kept as an attachment-producing smoke test: it proves the app launches
+/// without crashing and leaves an artifact worth looking at after a run.
 final class CaseNotesUITestsLaunchTests: XCTestCase {
-
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }
@@ -21,11 +24,6 @@ final class CaseNotesUITestsLaunchTests: XCTestCase {
     func testLaunch() throws {
         let app = XCUIApplication()
         app.launch()
-
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

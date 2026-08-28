@@ -5,17 +5,19 @@
 //  Created by q on 8/27/26.
 //
 
-import LocalAuthentication
 import SwiftUI
 
+/// Gates the app behind device authentication.
+///
+/// The view is only presentation. Every decision about when the app is readable
+/// lives in ``AppLockController``.
 struct AppLockView: View {
-    @State private var isUnlocked = false
-    @State private var authenticationError: String?
+    @State private var lock = AppLockController()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
-            if isUnlocked {
+            if lock.isUnlocked {
                 ContentView()
             } else {
                 lockedScreen
@@ -27,18 +29,11 @@ struct AppLockView: View {
             }
         }
         .task {
-            authenticate()
+            await lock.authenticate()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            switch newPhase {
-            case .active:
-                if !isUnlocked {
-                    authenticate()
-                }
-            case .inactive, .background:
-                isUnlocked = false
-            @unknown default:
-                isUnlocked = false
+            Task {
+                await lock.scenePhaseChanged(to: newPhase)
             }
         }
     }
@@ -48,14 +43,16 @@ struct AppLockView: View {
             Label("CaseNotes Locked", systemImage: "lock.fill")
                 .foregroundStyle(Theme.Colors.textPrimary)
         } description: {
-            if let authenticationError {
-                Text(authenticationError)
+            if let errorMessage = lock.errorMessage {
+                Text(errorMessage)
             } else {
                 Text("Authenticate to access your notes.")
             }
         } actions: {
             Button("Unlock") {
-                authenticate()
+                Task {
+                    await lock.authenticate()
+                }
             }
             .buttonStyle(.borderedProminent)
             .tint(Theme.Colors.accent)
@@ -75,34 +72,5 @@ struct AppLockView: View {
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
         .ignoresSafeArea()
-    }
-
-    private func authenticate() {
-        authenticationError = nil
-
-        let context = LAContext()
-        var error: NSError?
-
-        guard context.canEvaluatePolicy(
-            .deviceOwnerAuthentication,
-            error: &error
-        ) else {
-            authenticationError = error?.localizedDescription
-            return
-        }
-
-        context.evaluatePolicy(
-            .deviceOwnerAuthentication,
-            localizedReason: "Unlock your notes"
-        ) { success, error in
-            Task { @MainActor in
-                if success {
-                    isUnlocked = true
-                    authenticationError = nil
-                } else {
-                    authenticationError = error?.localizedDescription
-                }
-            }
-        }
     }
 }
