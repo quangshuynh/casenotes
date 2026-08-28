@@ -6,6 +6,7 @@
 //
 
 import PencilKit
+import SwiftData
 import SwiftUI
 
 /// A stored drawing, rendered for reading.
@@ -14,7 +15,7 @@ import SwiftUI
 /// the underlying bytes change, so opening a text-only note never touches
 /// PencilKit and scrolling a list never renders a sketch.
 struct NoteDrawingView: View {
-    let data: Data
+    let drawing: NoteDrawing
 
     @State private var image: UIImage?
 
@@ -39,8 +40,12 @@ struct NoteDrawingView: View {
         .frame(maxWidth: .infinity)
         .background(Theme.Colors.paper)
         .clipShape(.rect(cornerRadius: Theme.Radius.medium))
-        .task(id: data) {
-            image = render()
+        // Keyed on the edit time rather than the bytes: the identifier is
+        // compared on every update, and a drawing is large enough that comparing
+        // it would be real work. Reading `data` inside the task also keeps the
+        // externally stored blob out of view updates entirely.
+        .task(id: drawing.updatedAt) {
+            image = render(from: drawing.data)
         }
     }
 
@@ -51,9 +56,10 @@ struct NoteDrawingView: View {
     /// light paper this drawing is shown against. Forcing the trait keeps the
     /// image identical to what was drawn on the canvas.
     ///
+    /// - Parameter data: The stored drawing bytes.
     /// - Returns: The rendered image, or `nil` when the drawing is empty or the
     ///   data cannot be decoded.
-    private func render() -> UIImage? {
+    private func render(from data: Data) -> UIImage? {
         let drawing = DrawingCodec.decode(data)
 
         guard !drawing.bounds.isEmpty else {

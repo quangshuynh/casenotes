@@ -24,6 +24,15 @@ struct NoteListView: View {
     @State private var isPresentingNewNote = false
     @State private var searchText = ""
     @State private var sortOption: NoteSortOption = .updated
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Animation for changes that reorder the list, honoring Reduce Motion.
+    ///
+    /// Pinning moves a row to the top, which reads as a glitch when it happens
+    /// instantly. It stays instant for anyone who has asked for less motion.
+    private var motion: Animation? {
+        reduceMotion ? nil : Theme.Motion.reorder
+    }
 
     /// The notes on screen, after scope, search, and ordering are applied.
     private var visibleNotes: [Note] {
@@ -35,21 +44,27 @@ struct NoteListView: View {
         )
     }
 
-    /// Notes in this scope before the search term is applied.
+    /// Whether the scope holds any notes at all, ignoring the search term.
     ///
     /// Distinguishes "this folder is empty" from "the search found nothing".
-    private var scopedNotes: [Note] {
-        notes.filter(scope.contains)
+    /// Short circuits on the first match rather than building a second array.
+    private var scopeHasNotes: Bool {
+        notes.contains(where: scope.contains)
     }
 
     var body: some View {
-        Group {
-            if scopedNotes.isEmpty {
+        // Organizing is filtering plus a sort over every note, so it is done
+        // once per update and handed to the subviews that need it. Reading
+        // `visibleNotes` from several places would repeat that work each time.
+        let visible = visibleNotes
+
+        return Group {
+            if !scopeHasNotes {
                 emptyState
-            } else if visibleNotes.isEmpty {
+            } else if visible.isEmpty {
                 ContentUnavailableView.search(text: searchText)
             } else {
-                noteList
+                noteList(visible)
             }
         }
         .background(Theme.Colors.canvas)
@@ -113,9 +128,12 @@ struct NoteListView: View {
     }
 
     /// The list itself, with pinning, refiling, and deletion attached.
-    private var noteList: some View {
+    ///
+    /// - Parameter visible: The already organized notes to show.
+    /// - Returns: The configured list.
+    private func noteList(_ visible: [Note]) -> some View {
         List {
-            ForEach(visibleNotes) { note in
+            ForEach(visible) { note in
                 NavigationLink {
                     NoteDetailView(note: note)
                 } label: {
@@ -124,7 +142,9 @@ struct NoteListView: View {
                 .listRowBackground(Theme.Colors.surface)
                 .swipeActions(edge: .leading) {
                     Button {
-                        note.isPinned.toggle()
+                        withAnimation(motion) {
+                            note.isPinned.toggle()
+                        }
                     } label: {
                         Label(
                             note.isPinned ? "Unpin" : "Pin",

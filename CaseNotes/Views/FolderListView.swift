@@ -26,11 +26,22 @@ struct FolderListView: View {
     @State private var folderBeingRenamed: Folder?
     @State private var folderPendingDeletion: Folder?
     @State private var nameDraft = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Animation for rows arriving and leaving, honoring Reduce Motion.
+    private var motion: Animation? {
+        reduceMotion ? nil : Theme.Motion.reorder
+    }
 
     var body: some View {
-        List {
-            librarySection
-            folderSection
+        // Counting notes per scope is one pass over every note, done here and
+        // shared with the rows. Counting inside each row would repeat that pass
+        // once for the number and again for its spoken form.
+        let counts = ScopeCounts(notes: notes)
+
+        return List {
+            librarySection(counts)
+            folderSection(counts)
         }
         .appCanvasBackground()
         .navigationTitle("CaseNotes")
@@ -75,15 +86,21 @@ struct FolderListView: View {
     }
 
     /// Scopes that always exist, independent of how notes are filed.
-    private var librarySection: some View {
+    ///
+    /// - Parameter counts: Note counts for every scope.
+    /// - Returns: The library section.
+    private func librarySection(_ counts: ScopeCounts) -> some View {
         Section("Library") {
-            scopeLink(for: .all, systemImage: "tray.full")
-            scopeLink(for: .unfiled, systemImage: "tray")
+            scopeLink(for: .all, systemImage: "tray.full", counts: counts)
+            scopeLink(for: .unfiled, systemImage: "tray", counts: counts)
         }
     }
 
     /// The user's folders, each offering rename and delete.
-    private var folderSection: some View {
+    ///
+    /// - Parameter counts: Note counts for every scope.
+    /// - Returns: The folders section.
+    private func folderSection(_ counts: ScopeCounts) -> some View {
         Section("Folders") {
             if folders.isEmpty {
                 Text("No folders yet.")
@@ -93,7 +110,7 @@ struct FolderListView: View {
             }
 
             ForEach(folders) { folder in
-                scopeLink(for: .folder(folder), systemImage: "folder")
+                scopeLink(for: .folder(folder), systemImage: "folder", counts: counts)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             folderPendingDeletion = folder
@@ -135,7 +152,11 @@ struct FolderListView: View {
     ///   - scope: The scope to browse.
     ///   - systemImage: Symbol shown alongside the scope name.
     /// - Returns: A navigation row styled for the folder list.
-    private func scopeLink(for scope: NoteScope, systemImage: String) -> some View {
+    private func scopeLink(
+        for scope: NoteScope,
+        systemImage: String,
+        counts: ScopeCounts
+    ) -> some View {
         NavigationLink {
             NoteListView(scope: scope)
         } label: {
@@ -150,31 +171,14 @@ struct FolderListView: View {
 
                 Spacer(minLength: Theme.Spacing.small)
 
-                Text(noteCount(in: scope).formatted())
+                Text(counts.count(for: scope).formatted())
                     .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(Theme.Colors.textTertiary)
-                    .accessibilityLabel(noteCountLabel(for: scope))
+                    .accessibilityLabel(counts.spokenCount(for: scope))
             }
         }
         .listRowBackground(Theme.Colors.surface)
-    }
-
-    /// How many notes a scope currently holds.
-    ///
-    /// - Parameter scope: The scope to count.
-    /// - Returns: The number of notes shown when browsing that scope.
-    private func noteCount(in scope: NoteScope) -> Int {
-        notes.count(where: scope.contains)
-    }
-
-    /// Spoken form of a scope's note count.
-    ///
-    /// - Parameter scope: The scope being described.
-    /// - Returns: A phrase such as "3 notes".
-    private func noteCountLabel(for scope: NoteScope) -> String {
-        let count = noteCount(in: scope)
-        return count == 1 ? "1 note" : "\(count) notes"
     }
 
     /// The typed folder name with surrounding whitespace removed.
@@ -227,7 +231,9 @@ struct FolderListView: View {
 
     /// Inserts a folder using the typed name.
     private func createFolder() {
-        modelContext.insert(Folder(name: trimmedNameDraft))
+        withAnimation(motion) {
+            modelContext.insert(Folder(name: trimmedNameDraft))
+        }
     }
 
     /// Applies the typed name to the folder being renamed, then closes the alert.
@@ -244,7 +250,10 @@ struct FolderListView: View {
     ///
     /// - Parameter folder: The folder to delete.
     private func deleteFolder(_ folder: Folder) {
-        modelContext.delete(folder)
+        withAnimation(motion) {
+            modelContext.delete(folder)
+        }
+
         folderPendingDeletion = nil
     }
 }
@@ -254,6 +263,53 @@ struct FolderListView: View {
         FolderListView()
     }
     .modelContainer(for: [Note.self, Folder.self], inMemory: true)
+}
+
+/// Note counts for every scope shown in the folder list.
+///
+/// Built in one pass so a list of folders costs a single walk over the notes
+/// rather than one walk per row.
+struct ScopeCounts {
+    private var total = 0
+    private var unfiled = 0
+    private var byFolder: [PersistentIdentifier: Int] = [:]
+
+    /// - Parameter notes: Every note in the store.
+    init(notes: [Note]) {
+        for note in notes {
+            total += 1
+
+            if let folder = note.folder {
+                byFolder[folder.persistentModelID, default: 0] += 1
+            } else {
+                unfiled += 1
+            }
+        }
+    }
+
+    /// How many notes a scope holds.
+    ///
+    /// - Parameter scope: The scope to count.
+    /// - Returns: The number of notes shown when browsing that scope.
+    func count(for scope: NoteScope) -> Int {
+        switch scope {
+        case .all:
+            total
+        case .unfiled:
+            unfiled
+        case let .folder(folder):
+            byFolder[folder.persistentModelID] ?? 0
+        }
+    }
+
+    /// Spoken form of a scope's note count.
+    ///
+    /// - Parameter scope: The scope being described.
+    /// - Returns: A phrase such as "3 notes".
+    func spokenCount(for scope: NoteScope) -> String {
+        let value = count(for: scope)
+        return value == 1 ? "1 note" : "\(value) notes"
+    }
 }
 
 private extension View {

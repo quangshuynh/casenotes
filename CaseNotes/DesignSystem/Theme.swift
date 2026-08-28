@@ -65,6 +65,19 @@ enum Theme {
         static let large: CGFloat = 16
     }
 
+    /// Animation timings.
+    ///
+    /// Deliberately few and short. Motion here exists to explain a change, such
+    /// as a row moving to the top of a list, not to decorate it. Callers pass
+    /// `nil` instead when Reduce Motion is on.
+    enum Motion {
+        /// Rows arriving, leaving, or changing position.
+        static let reorder = Animation.easeInOut(duration: 0.22)
+
+        /// Revealing the app after it unlocks.
+        static let unlock = Animation.easeOut(duration: 0.28)
+    }
+
     /// Corner radii for surfaces and controls.
     enum Radius {
         static let small: CGFloat = 8

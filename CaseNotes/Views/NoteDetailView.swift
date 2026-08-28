@@ -17,7 +17,6 @@ import UIKit
 struct NoteDetailView: View {
     let note: Note
 
-    @Query(sort: \Folder.name) private var folders: [Folder]
     @State private var isEditing = false
     @State private var isDrawing = false
 
@@ -45,7 +44,7 @@ struct NoteDetailView: View {
                 noteBody
 
                 if let drawing = note.drawing {
-                    NoteDrawingView(data: drawing.data)
+                    NoteDrawingView(drawing: drawing)
                         .padding(.top, Theme.Spacing.small)
                 }
             }
@@ -80,15 +79,7 @@ struct NoteDetailView: View {
             NoteDrawingEditorView(note: note)
         }
         .sheet(isPresented: $isEditing) {
-            NavigationStack {
-                NoteEditorView(
-                    draft: NoteDraft(note: note),
-                    mode: .edit,
-                    folders: folders
-                ) { draft in
-                    draft.apply(to: note)
-                }
-            }
+            EditNoteSheet(note: note)
         }
     }
 
@@ -157,5 +148,28 @@ struct NoteDetailView: View {
                 eventDate: Date(timeIntervalSince1970: 1_700_086_400)
             )
         )
+    }
+}
+
+/// Hosts the editor and supplies the folders it offers.
+///
+/// The folder query lives here rather than in the reading view, so reading a
+/// note neither fetches folders nor re-renders when they change. It exists only
+/// while the sheet is presented.
+private struct EditNoteSheet: View {
+    let note: Note
+
+    @Query(sort: \Folder.name) private var folders: [Folder]
+
+    var body: some View {
+        NavigationStack {
+            NoteEditorView(
+                draft: NoteDraft(note: note),
+                mode: .edit,
+                folders: folders
+            ) { draft in
+                draft.apply(to: note)
+            }
+        }
     }
 }

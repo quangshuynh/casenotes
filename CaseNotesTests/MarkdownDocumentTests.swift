@@ -219,6 +219,28 @@ struct MarkdownDocumentTests {
     }
 
     @Test
+    func previewReadsOnlyTheOpeningOfALongBody() {
+        let opening = "The stairwell lighting is still out."
+        let body = opening + "\n\n" + String(repeating: "Filler paragraph. ", count: 400)
+
+        let preview = MarkdownDocument.plainPreview(of: body)
+
+        // The row shows two lines, so the preview stops well before the end of
+        // a long note rather than parsing all of it.
+        #expect(preview.hasPrefix(opening))
+        #expect(preview.count < 500)
+    }
+
+    @Test
+    func previewOfAShortBodyIsUnchangedByTheReadLimit() {
+        let body = "# Site Visit\n\nWalked the **north** wing."
+
+        #expect(
+            MarkdownDocument.plainPreview(of: body) == "Site Visit Walked the north wing."
+        )
+    }
+
+    @Test
     func previewOfEmptyBodyIsEmpty() {
         #expect(MarkdownDocument.plainPreview(of: "").isEmpty)
         #expect(MarkdownDocument.plainPreview(of: "   \n  ").isEmpty)

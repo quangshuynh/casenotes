@@ -87,13 +87,50 @@ struct MarkdownDocument: Equatable {
 
     /// Collapses a note body into a single line of prose for list previews.
     ///
-    /// - Parameter source: The raw note body.
+    /// Only the opening of the body is parsed. A list row shows two lines, so
+    /// parsing an entire long note to produce them is wasted work on a path that
+    /// runs for every visible row on every list update.
+    ///
+    /// - Parameters:
+    ///   - source: The raw note body.
+    ///   - limit: How many characters to read before giving up. The default is
+    ///     several times more than a row can display.
     /// - Returns: The text with Markdown syntax and line breaks removed.
-    static func plainPreview(of source: String) -> String {
-        MarkdownDocument(source)
+    static func plainPreview(of source: String, limit: Int = 400) -> String {
+        MarkdownDocument(opening(of: source, limit: limit))
             .plainText
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
+    }
+
+    /// The start of a note body, cut at a line boundary where possible.
+    ///
+    /// Cutting on a newline keeps the fragment closer to valid Markdown, so a
+    /// construct is less likely to be split in half. Length is measured by
+    /// walking at most `limit` characters rather than counting the whole string,
+    /// which would defeat the purpose on a long note.
+    ///
+    /// - Parameters:
+    ///   - source: The raw note body.
+    ///   - limit: Maximum characters to keep.
+    /// - Returns: The leading fragment, or the whole source when it is shorter.
+    private static func opening(of source: String, limit: Int) -> String {
+        guard let cut = source.index(
+            source.startIndex,
+            offsetBy: limit,
+            limitedBy: source.endIndex
+        ) else {
+            return source
+        }
+
+        let head = source[source.startIndex..<cut]
+
+        if let lastBreak = head.lastIndex(of: "\n"),
+           head.distance(from: head.startIndex, to: lastBreak) > limit / 2 {
+            return String(head[head.startIndex..<lastBreak])
+        }
+
+        return String(head)
     }
 
     /// Regroups parsed runs into blocks.

@@ -14,6 +14,7 @@ import SwiftUI
 struct AppLockView: View {
     @State private var lock = AppLockController()
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -23,6 +24,9 @@ struct AppLockView: View {
                 lockedScreen
             }
         }
+        // Only the unlock swap is animated. A crossfade softens what is
+        // otherwise an abrupt replacement of the whole interface.
+        .animation(reduceMotion ? nil : Theme.Motion.unlock, value: lock.isUnlocked)
         .overlay {
             if scenePhase != .active {
                 privacyShield
@@ -63,6 +67,10 @@ struct AppLockView: View {
 
     /// Covers the interface whenever the scene leaves the foreground so note
     /// content never appears in the app switcher snapshot.
+    ///
+    /// Deliberately never animated. The system snapshots the window as the
+    /// scene becomes inactive, and a shield that faded in would be caught
+    /// mid-transition with note content still visible behind it.
     private var privacyShield: some View {
         ZStack {
             Rectangle()

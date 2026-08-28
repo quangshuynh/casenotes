@@ -17,12 +17,17 @@ import SwiftUI
 struct MarkdownText: View {
     let source: String
 
-    /// The parsed source.
+    /// The parsed source, held rather than recomputed.
     ///
-    /// Parsing happens per render rather than being cached. Note bodies are
-    /// small, and holding parsed state would mean invalidating it on every edit.
-    private var document: MarkdownDocument {
-        MarkdownDocument(source)
+    /// Parsing is the expensive part of showing a note, and a reading view is
+    /// re-evaluated for reasons that have nothing to do with its text, such as
+    /// presenting a sheet. Keeping the result in state means a note is parsed
+    /// when it arrives and when it is edited, rather than on every update.
+    @State private var document: MarkdownDocument
+
+    init(source: String) {
+        self.source = source
+        _document = State(initialValue: MarkdownDocument(source))
     }
 
     var body: some View {
@@ -37,6 +42,11 @@ struct MarkdownText: View {
                         spacingAbove(block, previous: index > 0 ? blocks[index - 1] : nil)
                     )
             }
+        }
+        // State survives the view being recreated with new inputs, so the
+        // parsed document has to be refreshed explicitly after an edit.
+        .onChange(of: source) { _, updated in
+            document = MarkdownDocument(updated)
         }
     }
 
