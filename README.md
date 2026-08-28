@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/casenotes-logo.png" alt="CaseNotes app icon" width="256">
+  <img src="docs/images/casenotes-logo.png" alt="CaseNotes app icon" width="200">
 </p>
 
 # CaseNotes
