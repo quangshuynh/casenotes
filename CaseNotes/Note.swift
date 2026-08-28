@@ -23,6 +23,15 @@ final class Note {
     /// outlive the folder they were in.
     var folder: Folder?
 
+    /// An optional sketch attached to this note.
+    ///
+    /// Cascading is correct here, unlike for folders: a drawing is part of the
+    /// note rather than a place it lives, so deleting the note deletes it. The
+    /// relationship also keeps the drawing's bytes out of the way until a note
+    /// is opened.
+    @Relationship(deleteRule: .cascade, inverse: \NoteDrawing.note)
+    var drawing: NoteDrawing?
+
     init(
         title: String = "",
         body: String = "",

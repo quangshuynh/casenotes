@@ -27,8 +27,18 @@ extension UTType {
 /// edit timestamps or pinned state, is deliberately left out, since it is app
 /// state rather than note content.
 ///
+/// Drawings are not exported. A Markdown document cannot carry one without a
+/// companion image file, so a note holding a sketch says so in one line rather
+/// than losing it without a word.
+///
 /// Formatting is pure and deterministic so it can be asserted on in tests.
 enum NoteExport {
+    /// Noted in exports of a note that carries a drawing.
+    ///
+    /// Exports are text, so a sketch cannot travel with them. Saying so is
+    /// better than letting a drawing disappear silently from an exported note.
+    static let drawingNotice = "*This note contains a drawing, which is not included in a text export.*"
+
     /// Footer identifying the app in shared copies.
     ///
     /// Applied to shares and exported files, never to a plain copy, so pasting a
@@ -70,6 +80,10 @@ enum NoteExport {
         let body = note.body.trimmingCharacters(in: .whitespacesAndNewlines)
         if !body.isEmpty {
             sections.append(body)
+        }
+
+        if note.drawing != nil {
+            sections.append(drawingNotice)
         }
 
         if includingAttribution {

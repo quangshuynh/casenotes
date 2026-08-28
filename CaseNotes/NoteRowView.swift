@@ -35,6 +35,13 @@ struct NoteRowView: View {
                         .foregroundStyle(Theme.Colors.accent)
                         .accessibilityLabel("Pinned")
                 }
+
+                if note.drawing != nil {
+                    Image(systemName: "scribble")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Colors.textTertiary)
+                        .accessibilityLabel("Contains a drawing")
+                }
             }
 
             if !preview.isEmpty {

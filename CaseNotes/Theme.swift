@@ -44,6 +44,14 @@ enum Theme {
         /// Interactive tint, sourced from the app-wide accent color so system
         /// controls and custom views stay in agreement.
         static let accent = Color.accentColor
+
+        /// Background for drawings, in both appearances.
+        ///
+        /// Sketches keep a light paper ground on purpose. PencilKit ink is
+        /// stored with the color it was drawn in, so dark ink on a dark canvas
+        /// would vanish. Fixing the ground means a drawing looks the same while
+        /// it is made, while it is read, and in either appearance.
+        static let paper = Color(.appPaper)
     }
 
     /// Layout spacing steps.

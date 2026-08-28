@@ -19,6 +19,7 @@ struct NoteDetailView: View {
 
     @Query(sort: \Folder.name) private var folders: [Folder]
     @State private var isEditing = false
+    @State private var isDrawing = false
 
     var body: some View {
         ScrollView {
@@ -42,6 +43,11 @@ struct NoteDetailView: View {
                     .padding(.vertical, Theme.Spacing.xSmall)
 
                 noteBody
+
+                if let drawing = note.drawing {
+                    NoteDrawingView(data: drawing.data)
+                        .padding(.top, Theme.Spacing.small)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.large)
@@ -54,10 +60,24 @@ struct NoteDetailView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isDrawing = true
+                } label: {
+                    Label(
+                        note.drawing == nil ? "Add Drawing" : "Edit Drawing",
+                        systemImage: "pencil.tip.crop.circle"
+                    )
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") {
                     isEditing = true
                 }
             }
+        }
+        .fullScreenCover(isPresented: $isDrawing) {
+            NoteDrawingEditorView(note: note)
         }
         .sheet(isPresented: $isEditing) {
             NavigationStack {
