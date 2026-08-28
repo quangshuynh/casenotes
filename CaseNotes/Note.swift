@@ -15,17 +15,20 @@ final class Note {
     var createdAt: Date
     var updatedAt: Date
     var isPinned: Bool = false
+    var eventDate: Date?
     init(
         title: String = "",
         body: String = "",
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        eventDate: Date? = nil
     ) {
         self.title = title
         self.body = body
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.isPinned = isPinned
+        self.eventDate = eventDate
     }
 }
