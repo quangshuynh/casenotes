@@ -15,7 +15,9 @@ extension UTType {
     /// The SDK exposes no built-in Markdown constant, so the type is resolved
     /// from the file extension and falls back to plain text on any system that
     /// does not know it. Either way the shared file keeps its `.md` name.
-    static var noteMarkdown: UTType {
+    /// Declared `nonisolated` because `Transferable` conformances are resolved
+    /// outside the main actor.
+    nonisolated static var noteMarkdown: UTType {
         UTType(filenameExtension: "md", conformingTo: .plainText) ?? .plainText
     }
 }

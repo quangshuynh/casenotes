@@ -96,11 +96,18 @@ final class AppLockController {
     private let authenticator: DeviceAuthenticator
     private let reason: String
 
+    /// - Parameters:
+    ///   - authenticator: How the user proves who they are. Defaults to the
+    ///     LocalAuthentication backed implementation, and is replaced by a stub
+    ///     in tests. Built inside the initializer rather than as a default
+    ///     argument, since default arguments are evaluated outside this type's
+    ///     actor.
+    ///   - reason: Text shown by the system authentication prompt.
     init(
-        authenticator: DeviceAuthenticator = LocalDeviceAuthenticator(),
+        authenticator: DeviceAuthenticator? = nil,
         reason: String = "Unlock your notes"
     ) {
-        self.authenticator = authenticator
+        self.authenticator = authenticator ?? LocalDeviceAuthenticator()
         self.reason = reason
     }
 

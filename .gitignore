@@ -1,61 +1,87 @@
-# Xcode
+# Xcode and Swift
 #
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+# Files that are generated, machine specific, or private. Project configuration
+# is deliberately not ignored: project.pbxproj, contents.xcworkspacedata, shared
+# schemes under xcshareddata, and the asset catalog all belong in version
+# control so a fresh clone builds and CI resolves the scheme.
 
-## User settings
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+## Xcode user state
+#
+# Per-user window layout, breakpoints, and scheme ordering. Shared schemes live
+# in xcshareddata and stay tracked.
 xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
 
-## Obj-C/Swift specific
+## Build output
+build/
+DerivedData/
+*.o
 *.hmap
-
-## App packaging
 *.ipa
-*.dSYM.zip
 *.dSYM
+*.dSYM.zip
+*.moved-aside
+
+## Legacy Xcode project cruft
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
 
 ## Playgrounds
 timeline.xctimeline
 playground.xcworkspace
 
-# Swift Package Manager
+## Swift Package Manager
 #
-# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
-# Packages/
-# Package.pins
-# Package.resolved
-# *.xcodeproj
-#
-# Xcode automatically generates this directory with a .xcworkspacedata file and xcuserdata
-# hence it is not needed unless you have added a package configuration file to your project
-# .swiftpm
-
+# Package.resolved is intentionally NOT ignored. It pins dependency versions and
+# is required for reproducible builds if packages are ever added.
 .build/
+.swiftpm/
 
-# CocoaPods
+## CocoaPods and Carthage
 #
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
-
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
+# Neither is used. These rules only guard against accidental check-in.
+Pods/
 Carthage/Build/
 
-# fastlane
+## Signing material and secrets
 #
-# It is recommended to not store the screenshots in the git repo.
-# Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
+# Certificates, provisioning profiles, and local configuration must never be
+# committed. Shared .xcconfig files are allowed; only local overrides are ignored.
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+Secrets.swift
+*.local.xcconfig
+Local.xcconfig
 
+## Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+## fastlane
+#
+# Not used, kept as a guard.
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
