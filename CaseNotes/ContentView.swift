@@ -20,7 +20,6 @@ struct ContentView: View {
     @Query private var notes: [Note]
 
     @State private var isPresentingNewNote = false
-    @State private var newNote = Note()
     @State private var searchText = ""
     @State private var sortOption: NoteSortOption = .updated
 
@@ -86,7 +85,6 @@ struct ContentView: View {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        newNote = Note()
                         isPresentingNewNote = true
                     } label: {
                         Label("New Note", systemImage: "plus")
@@ -95,27 +93,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $isPresentingNewNote) {
                 NavigationStack {
-                    NoteEditorView(note: newNote)
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Cancel") {
-                                    isPresentingNewNote = false
-                                }
-                            }
-
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Save") {
-                                    newNote.updatedAt = Date()
-                                    modelContext.insert(newNote)
-                                    isPresentingNewNote = false
-                                }
-                                .disabled(
-                                    newNote.title.trimmingCharacters(
-                                        in: .whitespacesAndNewlines
-                                    ).isEmpty
-                                )
-                            }
-                        }
+                    NoteEditorView(draft: NoteDraft(), mode: .create) { draft in
+                        createNote(from: draft)
+                    }
                 }
             }
         }
@@ -125,7 +105,7 @@ struct ContentView: View {
         List {
             ForEach(visibleNotes) { note in
                 NavigationLink {
-                    NoteEditorView(note: note)
+                    NoteDetailView(note: note)
                 } label: {
                     NoteRowView(note: note)
                 }
@@ -145,6 +125,18 @@ struct ContentView: View {
             .onDelete(perform: deleteNotes)
         }
         .appCanvasBackground()
+    }
+
+    /// Inserts a note built from a finished draft.
+    ///
+    /// The note is created here rather than in the editor so an abandoned
+    /// composition never reaches the model context.
+    ///
+    /// - Parameter draft: The contents confirmed by the user.
+    private func createNote(from draft: NoteDraft) {
+        let note = Note()
+        draft.apply(to: note)
+        modelContext.insert(note)
     }
 
     private func deleteNotes(at offsets: IndexSet) {

@@ -7,114 +7,165 @@
 
 import SwiftUI
 
+/// The editing surface for a note, presented modally over the reading view.
+///
+/// The view owns a ``NoteDraft`` rather than the persistent model, so nothing
+/// reaches the store until the caller's `onSave` handler runs. Dismissal by any
+/// route other than Save discards the draft.
 struct NoteEditorView: View {
-    @Bindable var note: Note
-    @State private var eventDateEnabled: Bool
-    @State private var hasChanges = false
-    
-    init(note: Note) {
-        self.note = note
-        _eventDateEnabled  = State(
-                initialValue: note.eventDate != nil
-            )
+    /// Whether the editor is composing a new note or revising a stored one.
+    ///
+    /// The mode affects presentation only. Persistence is entirely the caller's
+    /// responsibility.
+    enum Mode {
+        case create
+        case edit
+
+        var navigationTitle: String {
+            switch self {
+            case .create: "New Note"
+            case .edit: "Edit Note"
+            }
+        }
     }
-    
+
+    private enum Field {
+        case title
+        case body
+    }
+
+    private let mode: Mode
+    private let originalDraft: NoteDraft
+    private let onSave: (NoteDraft) -> Void
+
+    @State private var draft: NoteDraft
+    @State private var eventDateEnabled: Bool
+    @State private var isConfirmingDiscard = false
+    @FocusState private var focusedField: Field?
+    @Environment(\.dismiss) private var dismiss
+
+    /// - Parameters:
+    ///   - draft: The starting contents. For `.edit` this is built from the note
+    ///     being revised, for `.create` it is usually empty.
+    ///   - mode: Whether a new note is being composed or an existing one revised.
+    ///   - onSave: Receives the finished draft when the user confirms. The
+    ///     caller decides how it is persisted.
+    init(
+        draft: NoteDraft,
+        mode: Mode,
+        onSave: @escaping (NoteDraft) -> Void
+    ) {
+        self.mode = mode
+        self.originalDraft = draft
+        self.onSave = onSave
+        _draft = State(initialValue: draft)
+        _eventDateEnabled = State(initialValue: draft.eventDate != nil)
+    }
 
     var body: some View {
         Form {
             Section {
-                TextField("Title", text: $note.title)
+                TextField("Title", text: $draft.title)
                     .font(.headline)
                     .foregroundStyle(Theme.Colors.textPrimary)
+                    .focused($focusedField, equals: .title)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField = .body }
 
-                TextEditor(text: $note.body)
+                TextEditor(text: $draft.body)
+                    .font(.body)
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 200)
+                    .focused($focusedField, equals: .body)
+                    .frame(minHeight: 220)
+                    .accessibilityLabel("Note Body")
             }
             .listRowBackground(Theme.Colors.surface)
 
             Section {
                 Toggle("Event Date", isOn: $eventDateEnabled)
                     .onChange(of: eventDateEnabled) { _, enabled in
-                        if enabled {
-                            note.eventDate = note.eventDate ?? Date()
-                        } else {
-                            note.eventDate = nil
-                        }
+                        draft.eventDate = enabled ? (draft.eventDate ?? Date()) : nil
                     }
 
                 if eventDateEnabled {
                     DatePicker(
                         "Date",
                         selection: Binding(
-                            get: {
-                                note.eventDate ?? Date()
-                            },
-                            set: {
-                                note.eventDate = $0
-                            }
+                            get: { draft.eventDate ?? Date() },
+                            set: { draft.eventDate = $0 }
                         ),
                         displayedComponents: .date
                     )
                 }
+            } footer: {
+                Text("Attach the date an event happened, separate from when the note was written.")
             }
             .listRowBackground(Theme.Colors.surface)
         }
         .appCanvasBackground()
-        .onChange(of: note.title) { _, _ in
-            hasChanges = true
-        }
-        .onChange(of: note.body) { _, _ in
-            hasChanges = true
-        }
-        .onChange(of: note.eventDate) { _, _ in
-            hasChanges = true
-        }
-        .navigationTitle("Edit Note")
+        .navigationTitle(mode.navigationTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(
-                    item: exportText,
-                    subject: Text(note.title),
-                    message: Text("Exported from CaseNotes")
-                ) {
-                    Label("Share", systemImage: "square.and.arrow.up")
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    if hasUnsavedChanges {
+                        isConfirmingDiscard = true
+                    } else {
+                        dismiss()
+                    }
                 }
             }
+
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    onSave(draft)
+                    dismiss()
+                }
+                .disabled(!draft.isSavable)
+            }
         }
-        .onDisappear {
-            if hasChanges {
-                note.updatedAt = Date()
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $isConfirmingDiscard,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        }
+        .task {
+            if mode == .create {
+                focusedField = .title
             }
         }
     }
-    private var exportText: String {
-        let title = note.title.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
 
-        if title.isEmpty {
-            return note.body
-        }
-
-        return """
-        \(title)
-
-        \(note.body)
-        """
+    /// Whether the draft differs from the contents the editor opened with.
+    ///
+    /// Drives both the discard confirmation and the block on swipe-to-dismiss,
+    /// so edits are never lost silently.
+    private var hasUnsavedChanges: Bool {
+        draft != originalDraft
     }
 }
 
-
-
-#Preview {
+#Preview("Edit") {
     NavigationStack {
         NoteEditorView(
-            note: Note(
+            draft: NoteDraft(
                 title: "Meeting Notes",
                 body: "Follow up on the project timeline."
-            )
-        )
+            ),
+            mode: .edit
+        ) { _ in }
+    }
+}
+
+#Preview("Create") {
+    NavigationStack {
+        NoteEditorView(draft: NoteDraft(), mode: .create) { _ in }
     }
 }

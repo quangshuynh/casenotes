@@ -48,13 +48,20 @@ struct NoteRowView: View {
     /// The event date when the note has one, otherwise the last edit date.
     ///
     /// Only one date is shown so the row keeps a single quiet metadata line.
+    /// A plain `HStack` is used rather than a `Label` because `List` reserves a
+    /// shared icon column for labels, which would leave a gap here and pull the
+    /// row separator out of alignment with its neighbours.
     @ViewBuilder
     private var metadata: some View {
         if let eventDate = note.eventDate {
-            Label(
-                eventDate.formatted(date: .abbreviated, time: .omitted),
-                systemImage: "calendar"
-            )
+            let formatted = eventDate.formatted(date: .abbreviated, time: .omitted)
+
+            HStack(spacing: Theme.Spacing.xSmall) {
+                Image(systemName: "calendar")
+                Text(formatted)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Event date \(formatted)")
         } else {
             Text(note.updatedAt.formatted(date: .abbreviated, time: .omitted))
         }

@@ -73,4 +73,104 @@ struct CaseNotesTests {
         #expect(note.isPinned == false)
         #expect(note.eventDate == nil)
     }
+
+    @Test
+    func draftSeedsFromExistingNote() {
+        let eventDate = Date(timeIntervalSince1970: 1_700_086_400)
+        let note = Note(
+            title: "Site Visit",
+            body: "Walked the north wing.",
+            eventDate: eventDate
+        )
+
+        let draft = NoteDraft(note: note)
+
+        #expect(draft.title == "Site Visit")
+        #expect(draft.body == "Walked the north wing.")
+        #expect(draft.eventDate == eventDate)
+    }
+
+    @Test
+    func draftRequiresANonEmptyTitle() {
+        #expect(NoteDraft(title: "", body: "Text").isSavable == false)
+        #expect(NoteDraft(title: "   \n ", body: "Text").isSavable == false)
+        #expect(NoteDraft(title: "Site Visit").isSavable)
+    }
+
+    @Test
+    func applyingAnUnchangedDraftLeavesTheNoteAlone() {
+        let updatedAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let note = Note(
+            title: "Site Visit",
+            body: "Walked the north wing.",
+            updatedAt: updatedAt
+        )
+
+        let didChange = NoteDraft(note: note).apply(
+            to: note,
+            at: Date(timeIntervalSince1970: 1_700_500_000)
+        )
+
+        #expect(didChange == false)
+        #expect(note.updatedAt == updatedAt)
+    }
+
+    @Test
+    func applyingAChangedDraftRewritesTheNoteAndTimestamp() {
+        let updatedAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let editedAt = Date(timeIntervalSince1970: 1_700_500_000)
+        let eventDate = Date(timeIntervalSince1970: 1_700_086_400)
+        let note = Note(
+            title: "Site Visit",
+            body: "Walked the north wing.",
+            updatedAt: updatedAt
+        )
+
+        var draft = NoteDraft(note: note)
+        draft.body = "Walked the north wing. Photograph the stairwell."
+        draft.eventDate = eventDate
+
+        let didChange = draft.apply(to: note, at: editedAt)
+
+        #expect(didChange)
+        #expect(note.body == "Walked the north wing. Photograph the stairwell.")
+        #expect(note.eventDate == eventDate)
+        #expect(note.updatedAt == editedAt)
+    }
+
+    @Test
+    func applyingADraftTrimsTitleWhitespace() {
+        let note = Note(title: "Site Visit")
+        let draft = NoteDraft(title: "  Revised Title  ", body: note.body)
+
+        draft.apply(to: note)
+
+        #expect(note.title == "Revised Title")
+    }
+
+    @Test
+    func titleWhitespaceAloneIsNotAChange() {
+        let updatedAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let note = Note(title: "Site Visit", updatedAt: updatedAt)
+        let draft = NoteDraft(title: "  Site Visit  ", body: note.body)
+
+        #expect(draft.hasChanges(comparedTo: note) == false)
+        #expect(draft.apply(to: note) == false)
+        #expect(note.updatedAt == updatedAt)
+    }
+
+    @Test
+    func clearingAnEventDateCountsAsAChange() {
+        let note = Note(
+            title: "Site Visit",
+            eventDate: Date(timeIntervalSince1970: 1_700_086_400)
+        )
+
+        var draft = NoteDraft(note: note)
+        draft.eventDate = nil
+
+        #expect(draft.hasChanges(comparedTo: note))
+        #expect(draft.apply(to: note))
+        #expect(note.eventDate == nil)
+    }
 }
