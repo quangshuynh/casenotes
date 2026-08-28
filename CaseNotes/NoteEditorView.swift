@@ -22,35 +22,46 @@ struct NoteEditorView: View {
 
     var body: some View {
         Form {
-            TextField("Title", text: $note.title)
-            
-            TextEditor(text: $note.body)
-                .frame(minHeight: 200)
-            
-            Toggle("Event Date", isOn: $eventDateEnabled)
-                .onChange(of: eventDateEnabled) { _, enabled in
-                    if enabled {
-                        note.eventDate = note.eventDate ?? Date()
-                    } else {
-                        note.eventDate = nil
-                    }
-                }
-            
-            if eventDateEnabled {
-                DatePicker(
-                    "Date",
-                    selection: Binding(
-                        get: {
-                            note.eventDate ?? Date()
-                        },
-                        set: {
-                            note.eventDate = $0
-                        }
-                    ),
-                    displayedComponents: .date
-                )
+            Section {
+                TextField("Title", text: $note.title)
+                    .font(.headline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+
+                TextEditor(text: $note.body)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 200)
             }
+            .listRowBackground(Theme.Colors.surface)
+
+            Section {
+                Toggle("Event Date", isOn: $eventDateEnabled)
+                    .onChange(of: eventDateEnabled) { _, enabled in
+                        if enabled {
+                            note.eventDate = note.eventDate ?? Date()
+                        } else {
+                            note.eventDate = nil
+                        }
+                    }
+
+                if eventDateEnabled {
+                    DatePicker(
+                        "Date",
+                        selection: Binding(
+                            get: {
+                                note.eventDate ?? Date()
+                            },
+                            set: {
+                                note.eventDate = $0
+                            }
+                        ),
+                        displayedComponents: .date
+                    )
+                }
+            }
+            .listRowBackground(Theme.Colors.surface)
         }
+        .appCanvasBackground()
         .onChange(of: note.title) { _, _ in
             hasChanges = true
         }

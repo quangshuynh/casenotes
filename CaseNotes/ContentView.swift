@@ -23,7 +23,7 @@ struct ContentView: View {
     @State private var newNote = Note()
     @State private var searchText = ""
     @State private var sortOption: NoteSortOption = .updated
-    
+
     private var visibleNotes: [Note] {
         let filtered: [Note]
 
@@ -61,45 +61,10 @@ struct ContentView: View {
                 } else if visibleNotes.isEmpty {
                     ContentUnavailableView.search(text: searchText)
                 } else {
-                    List {
-                        ForEach(visibleNotes) { note in
-                            NavigationLink {
-                                NoteEditorView(note: note)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(note.title)
-                                            .font(.headline)
-                                        
-                                        if note.isPinned {
-                                            Image(systemName: "pin.fill")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-
-                                    Text(note.body)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                            }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    note.isPinned.toggle()
-                                } label: {
-                                    Label(
-                                        note.isPinned ? "Unpin" : "Pin",
-                                        systemImage: note.isPinned ? "pin.slash" : "pin"
-                                    )
-                                }
-                            }
-                        }
-                        .onDelete(perform: deleteNotes)
-
-                    }
+                    noteList
                 }
             }
+            .background(Theme.Colors.canvas)
             .navigationTitle("Notes")
             .searchable(
                 text: $searchText,
@@ -115,16 +80,16 @@ struct ContentView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "arrow.up.arrow.down")
+                        Label("Sort Notes", systemImage: "arrow.up.arrow.down")
                     }
                 }
-                
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         newNote = Note()
                         isPresentingNewNote = true
                     } label: {
-                        Image(systemName: "plus")
+                        Label("New Note", systemImage: "plus")
                     }
                 }
             }
@@ -137,7 +102,7 @@ struct ContentView: View {
                                     isPresentingNewNote = false
                                 }
                             }
-                            
+
                             ToolbarItem(placement: .confirmationAction) {
                                 Button("Save") {
                                     newNote.updatedAt = Date()
@@ -154,6 +119,32 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private var noteList: some View {
+        List {
+            ForEach(visibleNotes) { note in
+                NavigationLink {
+                    NoteEditorView(note: note)
+                } label: {
+                    NoteRowView(note: note)
+                }
+                .listRowBackground(Theme.Colors.surface)
+                .swipeActions(edge: .leading) {
+                    Button {
+                        note.isPinned.toggle()
+                    } label: {
+                        Label(
+                            note.isPinned ? "Unpin" : "Pin",
+                            systemImage: note.isPinned ? "pin.slash" : "pin"
+                        )
+                    }
+                    .tint(Theme.Colors.accent)
+                }
+            }
+            .onDelete(perform: deleteNotes)
+        }
+        .appCanvasBackground()
     }
 
     private func deleteNotes(at offsets: IndexSet) {

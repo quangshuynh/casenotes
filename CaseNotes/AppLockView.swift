@@ -18,31 +18,12 @@ struct AppLockView: View {
             if isUnlocked {
                 ContentView()
             } else {
-                ContentUnavailableView {
-                    Label("CaseNotes Locked", systemImage: "lock.fill")
-                } description: {
-                    if let authenticationError {
-                        Text(authenticationError)
-                    } else {
-                        Text("Authenticate to access your notes.")
-                    }
-                } actions: {
-                    Button("Unlock") {
-                        authenticate()
-                    }
-                }
+                lockedScreen
             }
         }
         .overlay {
             if scenePhase != .active {
-                ZStack {
-                    Rectangle()
-                        .fill(.background)
-
-                    Label("CaseNotes Locked", systemImage: "lock.fill")
-                        .font(.headline)
-                }
-                .ignoresSafeArea()
+                privacyShield
             }
         }
         .task {
@@ -62,9 +43,43 @@ struct AppLockView: View {
         }
     }
 
+    private var lockedScreen: some View {
+        ContentUnavailableView {
+            Label("CaseNotes Locked", systemImage: "lock.fill")
+                .foregroundStyle(Theme.Colors.textPrimary)
+        } description: {
+            if let authenticationError {
+                Text(authenticationError)
+            } else {
+                Text("Authenticate to access your notes.")
+            }
+        } actions: {
+            Button("Unlock") {
+                authenticate()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.Colors.accent)
+        }
+        .background(Theme.Colors.canvas)
+    }
+
+    /// Covers the interface whenever the scene leaves the foreground so note
+    /// content never appears in the app switcher snapshot.
+    private var privacyShield: some View {
+        ZStack {
+            Rectangle()
+                .fill(Theme.Colors.canvas)
+
+            Label("CaseNotes Locked", systemImage: "lock.fill")
+                .font(.headline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .ignoresSafeArea()
+    }
+
     private func authenticate() {
         authenticationError = nil
-        
+
         let context = LAContext()
         var error: NSError?
 
