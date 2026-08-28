@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// The reading view for a single note.
 ///
@@ -47,13 +48,7 @@ struct NoteDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(
-                    item: exportText,
-                    subject: Text(displayTitle),
-                    message: Text("Exported from CaseNotes")
-                ) {
-                    Label("Share Note", systemImage: "square.and.arrow.up")
-                }
+                shareMenu
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -93,19 +88,43 @@ struct NoteDetailView: View {
         return trimmed.isEmpty ? "Untitled Note" : trimmed
     }
 
-    /// Plain-text representation used by the share sheet.
-    private var exportText: String {
-        let title = displayTitle
+    /// The three ways a note can leave the app.
+    ///
+    /// They are kept distinct because they serve different intents: a copy is
+    /// pasted into something the user is already writing and must stay clean,
+    /// while a share or a file export is a standalone artifact where a quiet
+    /// footer belongs.
+    private var shareMenu: some View {
+        Menu {
+            Button {
+                UIPasteboard.general.string = NoteExport.markdown(
+                    for: note,
+                    includingAttribution: false
+                )
+            } label: {
+                Label("Copy Note", systemImage: "doc.on.doc")
+            }
 
-        guard !note.body.isEmpty else {
-            return title
+            ShareLink(
+                item: NoteExport.markdown(for: note, includingAttribution: true),
+                subject: Text(displayTitle),
+                message: Text("A note from CaseNotes")
+            ) {
+                Label("Share Note", systemImage: "square.and.arrow.up")
+            }
+
+            ShareLink(
+                item: MarkdownNoteFile(note: note),
+                preview: SharePreview(
+                    NoteExport.suggestedFileName(for: note),
+                    image: Image(systemName: "doc.text")
+                )
+            ) {
+                Label("Export Markdown File", systemImage: "arrow.down.document")
+            }
+        } label: {
+            Label("Share and Export", systemImage: "square.and.arrow.up")
         }
-
-        return """
-        \(title)
-
-        \(note.body)
-        """
     }
 }
 
