@@ -18,6 +18,7 @@ struct NoteEditorView: View {
                 initialValue: note.eventDate != nil
             )
     }
+    
 
     var body: some View {
         Form {
@@ -60,13 +61,41 @@ struct NoteEditorView: View {
             hasChanges = true
         }
         .navigationTitle("Edit Note")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(
+                    item: exportText,
+                    subject: Text(note.title),
+                    message: Text("Exported from CaseNotes")
+                ) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
         .onDisappear {
             if hasChanges {
                 note.updatedAt = Date()
             }
         }
     }
+    private var exportText: String {
+        let title = note.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        if title.isEmpty {
+            return note.body
+        }
+
+        return """
+        \(title)
+
+        \(note.body)
+        """
+    }
 }
+
+
 
 #Preview {
     NavigationStack {
