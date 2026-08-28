@@ -17,6 +17,25 @@ Created ordering, and pinned-first grouping within either order.
 ![All Notes showing a pinned note above a more recently edited one, a note
 marked as carrying a drawing, folder names, and an event date](screenshots/notes-dark.png){ width="300" }
 
+## Version history
+
+Saving a change to an existing note keeps the version it replaces. Version
+History is reached from the note's toolbar, lists previous versions newest
+first, and opens each one read only before anything is restored.
+
+Restoring makes a previous version current and keeps the version that was
+current until then, so a restore can itself be undone by restoring again.
+Nothing is removed from history.
+
+A version records the authored text of the note: title, body, and event date.
+Creating a note records nothing, because there is no earlier state to recover.
+Saving without a change, cancelling, moving a note between folders, pinning it,
+and simply reading it all leave history untouched.
+
+Drawings are current-state attachments rather than versioned content. Restoring
+a previous version changes the text and leaves the note's drawing exactly as it
+is.
+
 ## Folders
 
 Folders can be created, renamed, and deleted. All Notes and Unfiled are explicit

@@ -76,6 +76,29 @@ The app target uses Xcode synchronized file groups. New files inside
 - Add a UI test only when a unit test genuinely cannot give the same confidence.
 - Never add a bypass of the app lock to make testing easier.
 
+## Version history invariants
+
+Notes keep previous authored states as `NoteRevision` records. These rules are
+behavior, not implementation detail, and tests exist to protect them:
+
+- A revision is written only when a save or a restore actually changes authored
+  content: title, body, or event date. Filing, pinning, drawing edits, opening a
+  note, and cancelling an edit never write one.
+- Saving a new note writes no revision. There is no earlier state to recover, so
+  history stays empty until the first later edit.
+- A revision holds the state being replaced, not the state being written. The
+  note itself is always the newest version.
+- Restoring keeps the current state as a revision first, then applies the older
+  one. Nothing is deleted from history, and restoring a state the note already
+  matches does nothing.
+- `Note.revisions` cascades. Deleting a note deletes its history, while deleting
+  a folder nullifies filing and touches neither notes nor their history.
+- History order is established by `NoteHistory`, never by relationship order.
+
+Changing the revision model, its relationship, or these rules means changing the
+schema. Review migration behavior and keep the pre-revision migration test in
+`CaseNotesTests/PreRevisionSchema.swift` frozen at the schema it describes.
+
 ## Privacy rules
 
 - Local-first is non-negotiable. Do not add networking, accounts, analytics,
@@ -84,6 +107,8 @@ The app target uses Xcode synchronized file groups. New files inside
   lock gates the interface, not the data at rest.
 - Use synthetic content everywhere: tests, previews, fixtures, screenshots, docs,
   and commit history. Never real personal data.
+- Version history is a recovery feature. Never describe it as an audit log,
+  tamper evident, immutable, or a record of provenance.
 
 ## Keep support files synchronized
 

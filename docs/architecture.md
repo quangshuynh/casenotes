@@ -22,6 +22,10 @@ model. Directly binding controls to a SwiftData model would write changes
 through immediately and make Cancel unreliable. The drawing editor follows the
 same boundary by holding its live `PKCanvasView` until Done.
 
+Saving an existing note goes through `NoteHistory`, which keeps the version the
+edit replaces before the draft is applied. Creating a note applies its draft
+directly, since a new note has no earlier version to keep.
+
 ![Note editor showing the title and body fields, the Markdown hint, an enabled
 event date, and the folder picker, with Cancel and Save in the navigation
 bar](screenshots/note-editor-dark.png){ width="300" }
@@ -36,6 +40,8 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 ## Logic boundaries
 
 - `NoteOrganizer` owns scope filtering, search, pinning, and sorting.
+- `NoteHistory` owns version history: when a previous version is kept, the
+  order history reads in, and what restoring one does.
 - `MarkdownDocument` converts Markdown source into renderable blocks.
 - `NoteExport` defines the exact text and file representation leaving the app.
 - `AppLockController` owns authentication and scene lifecycle policy behind a
@@ -46,6 +52,10 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 Markdown parsing is retained in `MarkdownText` state and refreshed only when
 the source changes. List previews parse only an opening fragment instead of an
 entire long note. Folder scope counts are accumulated in one pass.
+
+The version history list uses the same plain-text preview strategy as the notes
+list, so showing a long history parses no Markdown. A historical body is parsed
+only when that version is opened.
 
 Drawing bytes use external SwiftData storage and are read only when the drawing
 view or editor opens. Rasterization is keyed to the drawing edit timestamp so

@@ -76,17 +76,22 @@ struct NoteTests {
         #expect(fetchedNote.eventDate == eventDate)
     }
 
-    /// Folders and drawings were each added as a new entity plus an optional
-    /// relationship, which SwiftData migrates on its own. The reopen uses the
-    /// same model list as `CaseNotesApp`, so this covers the schema a shipped
-    /// build actually opens an older store with rather than a subset of it.
+    /// An on-disk store written with only notes in it reopens under the model
+    /// list a shipped build registers, with its notes intact and the entities it
+    /// never held simply empty.
+    ///
+    /// Naming fewer models does not by itself produce an older schema, since
+    /// SwiftData registers every entity reachable through a relationship, so the
+    /// file here is written with the current one. Reopening a store that
+    /// genuinely predates an entity is covered by
+    /// ``existingNoteStoresOpenAfterVersionHistoryIsAdded()``.
     @Test
     func existingNoteStoresOpenAfterFoldersAndDrawingsAreAdded() throws {
         let url = URL.temporaryDirectory
             .appending(path: "casenotes-migration-\(UUID().uuidString).store")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        // Write a store using the schema as it stood before folders existed.
+        // Write a store holding nothing but a note.
         do {
             let container = try ModelContainer(
                 for: Note.self,
@@ -115,12 +120,80 @@ struct NoteTests {
         #expect(note.folder == nil)
         #expect(note.drawing == nil)
 
-        // The entities the older store never held come back empty rather than
+        // The entities the store never held come back empty rather than
         // failing to open.
         let folders = try context.fetch(FetchDescriptor<Folder>())
         let drawings = try context.fetch(FetchDescriptor<NoteDrawing>())
 
         #expect(folders.isEmpty)
         #expect(drawings.isEmpty)
+    }
+
+    /// Version history was added the same way folders and drawings were: a new
+    /// entity plus a cascading relationship, which SwiftData migrates
+    /// automatically without a migration plan.
+    ///
+    /// The older store is written through ``PreRevisionSchema``, which declares
+    /// the models as they stood before revisions existed, so the file genuinely
+    /// has no revision entity in it. Everything a user had keeps working, and
+    /// the note simply starts out with no history.
+    @Test
+    func existingNoteStoresOpenAfterVersionHistoryIsAdded() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-revisions-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let writtenAt = Date(timeIntervalSince1970: 1_700_000_100)
+
+        // Write a store using the schema as it stood before version history.
+        do {
+            let container = try ModelContainer(
+                for: Schema(PreRevisionSchema.models),
+                configurations: ModelConfiguration(url: url)
+            )
+            let context = ModelContext(container)
+
+            let folder = PreRevisionSchema.Folder(name: "Site Visits")
+            let drawing = PreRevisionSchema.NoteDrawing(
+                data: Data([0x01, 0x02, 0x03]),
+                updatedAt: writtenAt
+            )
+            let note = PreRevisionSchema.Note(
+                title: "Legacy Note",
+                body: "Written before version history existed.",
+                updatedAt: writtenAt
+            )
+
+            context.insert(folder)
+            context.insert(drawing)
+            context.insert(note)
+            note.folder = folder
+            note.drawing = drawing
+            try context.save()
+        }
+
+        // Reopen the same file with the model list the app registers.
+        let container = try ModelContainer(
+            for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+            configurations: ModelConfiguration(url: url)
+        )
+        let context = ModelContext(container)
+        let notes = try context.fetch(FetchDescriptor<Note>())
+
+        #expect(notes.count == 1)
+
+        let note = try #require(notes.first)
+        #expect(note.title == "Legacy Note")
+        #expect(note.body == "Written before version history existed.")
+        #expect(note.updatedAt == writtenAt)
+        #expect(note.folder?.name == "Site Visits")
+        #expect(note.drawing?.data == Data([0x01, 0x02, 0x03]))
+
+        // The note keeps everything it had and simply starts with no history.
+        #expect(note.revisions.isEmpty)
+        #expect(NoteHistory.revisions(of: note).isEmpty)
+
+        let revisions = try context.fetch(FetchDescriptor<NoteRevision>())
+        #expect(revisions.isEmpty)
     }
 }

@@ -32,6 +32,15 @@ final class Note {
     @Relationship(deleteRule: .cascade, inverse: \NoteDrawing.note)
     var drawing: NoteDrawing?
 
+    /// Previous authored states of this note, in no guaranteed order.
+    ///
+    /// Cascading for the same reason drawings do: history describes one note and
+    /// is meaningless without it, so deleting the note takes it along. Read this
+    /// through ``NoteHistory/revisions(of:)`` rather than directly, because
+    /// SwiftData makes no promise about the order of a relationship array.
+    @Relationship(deleteRule: .cascade, inverse: \NoteRevision.note)
+    var revisions: [NoteRevision] = []
+
     init(
         title: String = "",
         body: String = "",

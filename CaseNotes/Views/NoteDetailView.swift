@@ -70,6 +70,14 @@ struct NoteDetailView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    NoteHistoryView(note: note)
+                } label: {
+                    Label("Version History", systemImage: "clock.arrow.circlepath")
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") {
                     isEditing = true
                 }
@@ -159,6 +167,7 @@ struct NoteDetailView: View {
 private struct EditNoteSheet: View {
     let note: Note
 
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Folder.name) private var folders: [Folder]
 
     var body: some View {
@@ -168,7 +177,7 @@ private struct EditNoteSheet: View {
                 mode: .edit,
                 folders: folders
             ) { draft in
-                draft.apply(to: note)
+                NoteHistory.save(draft, to: note, in: modelContext)
             }
         }
     }

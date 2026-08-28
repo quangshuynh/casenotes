@@ -60,6 +60,22 @@ rather than restating signatures. AGENTS.md has the specifics.
 Persistence changes deserve extra care. Think through delete rules and schema
 compatibility before writing code, and prove the result with a test.
 
+## Version history
+
+Revisions record authored text only: title, body, and event date. Keep the
+draft-based Save and Cancel architecture as it is. Nothing is snapshotted while
+typing, on Cancel, or on organizational changes such as filing and pinning, and
+a new note's first save records nothing.
+
+Do not put drawings into revision history unless the scope is explicitly
+widened, and do not add diff, blame, or line-level annotation infrastructure
+until it is asked for. Snapshots already hold enough authored state for a future
+comparison feature.
+
+`NoteHistory` owns these rules. Read the migration behavior in `NoteTests` before
+touching the revision model, and remember that naming fewer models does not
+create an older SwiftData schema.
+
 ## Working rhythm
 
 Work in commit-sized pieces. For each implementation change, use the impact

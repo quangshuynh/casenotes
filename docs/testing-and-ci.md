@@ -3,8 +3,9 @@
 ## Unit tests
 
 The CI-gated suite uses Swift Testing and covers model behavior, persistence,
-schema migration, drafts and timestamps, organizing notes, Markdown parsing,
-exports, folder relationships, drawing persistence, and app lock policy.
+schema migration, drafts and timestamps, version history and restore, organizing
+notes, Markdown parsing, exports, folder relationships, drawing persistence, and
+app lock policy.
 
 ```bash
 xcodebuild test -project CaseNotes.xcodeproj -scheme CaseNotes \
@@ -14,7 +15,9 @@ xcodebuild test -project CaseNotes.xcodeproj -scheme CaseNotes \
 
 Dates, locales, and time zones are injected where formatted output matters.
 Persistence tests use an in-memory `ModelContainer` except when reopening an
-older on-disk schema is the behavior under test.
+older on-disk schema is the behavior under test. That older store is written
+through `PreRevisionSchema` in the test target, which declares the models as
+they stood before version history and must stay frozen there.
 
 ## UI test
 

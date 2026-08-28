@@ -24,6 +24,8 @@ analytics, or cloud services.
 
 - Draft-based editing with explicit Save and Cancel behavior
 - Markdown reading mode, search, sorting, pinning, and optional event dates
+- Version history that keeps previous text and restores it without losing the
+  current version
 - Folders that keep notes safely in Unfiled when deleted
 - One optional PencilKit drawing per note
 - Copy, share, and Markdown file export
@@ -60,10 +62,11 @@ features, architecture, persistence, privacy, testing, and development details.
 
 CaseNotes implements its intended core scope and has not been submitted to the
 App Store. Notes remain on one device unless included in that device's backups.
-There is no sync or import, folders do not nest, and drawings are not embedded
-in Markdown exports. The app lock gates the interface but does not encrypt the
-SwiftData store. See [limitations](https://quangshuynh.github.io/casenotes/limitations/)
-for the complete list.
+There is no sync or import, folders do not nest, drawings are not embedded in
+Markdown exports, and version history covers note text rather than drawings.
+The app lock gates the interface but does not encrypt the SwiftData store. See
+[limitations](https://quangshuynh.github.io/casenotes/limitations/) for the
+complete list.
 
 ## License
 
