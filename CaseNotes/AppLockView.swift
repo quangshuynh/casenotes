@@ -33,6 +33,18 @@ struct AppLockView: View {
                 }
             }
         }
+        .overlay {
+            if scenePhase != .active {
+                ZStack {
+                    Rectangle()
+                        .fill(.background)
+
+                    Label("CaseNotes Locked", systemImage: "lock.fill")
+                        .font(.headline)
+                }
+                .ignoresSafeArea()
+            }
+        }
         .task {
             authenticate()
         }
