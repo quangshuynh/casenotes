@@ -22,6 +22,10 @@ model. Directly binding controls to a SwiftData model would write changes
 through immediately and make Cancel unreliable. The drawing editor follows the
 same boundary by holding its live `PKCanvasView` until Done.
 
+For relationship rules, migration coverage, and timestamp behavior, see
+[SwiftData and Persistence](persistence.md). Authentication and scene lifecycle
+behavior are documented separately in [App Lock and Privacy](app-lock-and-privacy.md).
+
 ## Logic boundaries
 
 - `NoteOrganizer` owns scope filtering, search, pinning, and sorting.

@@ -5,20 +5,70 @@ repo_url: https://github.com/quangshuynh/casenotes
 repo_name: quangshuynh/casenotes
 edit_uri: edit/main/docs/
 theme:
-  name: readthedocs
-  highlightjs: true
-  hljs_languages: [bash, swift]
+  name: material
+  logo: images/casenotes-logo.png
+  favicon: images/casenotes-logo.png
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Features: features.md
-  - Architecture: architecture.md
-  - Persistence and Privacy: persistence-and-privacy.md
-  - Content and Export: content-and-export.md
-  - Accessibility: accessibility.md
-  - Testing and CI: testing-and-ci.md
-  - Development: development.md
-  - Limitations: limitations.md
+  - Getting Started:
+      - Requirements and Setup: getting-started.md
+  - Features:
+      - Notes, Folders, and Drawings: features.md
+      - Markdown and Export: content-and-export.md
+  - Architecture:
+      - Overview and State Ownership: architecture.md
+      - SwiftData and Persistence: persistence.md
+      - App Lock and Privacy: app-lock-and-privacy.md
+  - Development:
+      - Development Guide: development.md
+      - Testing and CI: testing-and-ci.md
+      - Accessibility: accessibility.md
+  - Reference:
+      - Limitations and Status: limitations.md
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
 extra_css:
   - stylesheets/extra.css
+copyright: Copyright &copy; 2026 CaseNotes contributors
 strict: true

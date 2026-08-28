@@ -12,7 +12,7 @@ The application uses first-party Apple frameworks only. It contains no
 networking, account system, analytics, telemetry, advertising, or cloud
 dependency.
 
-## What is implemented
+## What you get
 
 - Create, read, edit, pin, search, sort, and delete notes
 - Organize notes into flat folders or leave them Unfiled
@@ -25,9 +25,33 @@ dependency.
 Start with [Getting Started](getting-started.md), explore the user-facing
 [Features](features.md), or read the [Architecture](architecture.md) overview.
 
+## Development requirements
+
+- Xcode 26.6 or newer
+- An iOS 26.5 or newer simulator or device
+- No package installation or service configuration for the application
+
+Build the shared scheme from Xcode or run:
+
+```bash
+xcodebuild build -project CaseNotes.xcodeproj -scheme CaseNotes \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+The [Getting Started](getting-started.md) guide covers command-line tool
+selection, running the app, and the unit-test command.
+
 ## Project position
 
 CaseNotes is a focused portfolio and learning project. Its core feature set is
 implemented and tested, but it has not been submitted to the App Store or
 through a security review. The [limitations](limitations.md) page records what
 the app intentionally does not support.
+
+The app lock is an interface gate, not encryption of the SwiftData store. Sync,
+import, nested folders, and drawing-inclusive export are not implemented.
+
+## License
+
+CaseNotes is distributed under the
+[MIT License](https://github.com/quangshuynh/casenotes/blob/main/LICENSE).

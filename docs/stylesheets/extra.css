@@ -1,38 +1,36 @@
-:root {
-  --casenotes-ink: #203331;
-  --casenotes-accent: #2f6f68;
-  --casenotes-paper: #fbf8f1;
+:root > * {
+  --md-primary-fg-color: #3d312d;
+  --md-primary-fg-color--light: #55453f;
+  --md-primary-fg-color--dark: #2b2320;
+  --md-accent-fg-color: #b65f3a;
 }
 
-.wy-side-nav-search,
-.wy-nav-top {
-  background: var(--casenotes-accent);
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #fcfaf5;
+  --md-default-fg-color: #332d2a;
+  --md-typeset-a-color: #a45134;
+  --md-code-bg-color: #f3ede3;
 }
 
-.wy-nav-content-wrap {
-  background: var(--casenotes-paper);
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #211d1b;
+  --md-default-bg-color--light: #2b2623;
+  --md-default-fg-color: #f2ebe0;
+  --md-typeset-a-color: #e7a176;
+  --md-code-bg-color: #2d2825;
 }
 
-.wy-nav-content {
-  max-width: 880px;
+.md-grid {
+  max-width: 72rem;
 }
 
-.rst-content h1,
-.rst-content h2,
-.rst-content h3 {
-  color: var(--casenotes-ink);
-}
-
-.rst-content a {
-  color: var(--casenotes-accent);
-}
-
-.rst-content code {
-  overflow-wrap: anywhere;
+.md-header__button.md-logo img,
+.md-nav__button.md-logo img {
+  border-radius: 22%;
 }
 
 .casenotes-logo {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1.25rem;
 }
 
 .casenotes-logo img {
