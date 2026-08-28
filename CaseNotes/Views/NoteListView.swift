@@ -25,6 +25,7 @@ struct NoteListView: View {
     @State private var searchText = ""
     @State private var sortOption: NoteSortOption = .updated
 
+    /// The notes on screen, after scope, search, and ordering are applied.
     private var visibleNotes: [Note] {
         NoteOrganizer.organize(
             notes,
@@ -90,6 +91,7 @@ struct NoteListView: View {
         }
     }
 
+    /// Shown when a scope holds no notes at all, as opposed to no search results.
     private var emptyState: some View {
         ContentUnavailableView(
             scope.title == "All Notes" ? "No Notes" : "No Notes Here",
@@ -98,6 +100,7 @@ struct NoteListView: View {
         )
     }
 
+    /// Explains why a scope is empty in terms of what it collects.
     private var emptyStateDescription: String {
         switch scope {
         case .all:
@@ -109,6 +112,7 @@ struct NoteListView: View {
         }
     }
 
+    /// The list itself, with pinning, refiling, and deletion attached.
     private var noteList: some View {
         List {
             ForEach(visibleNotes) { note in
@@ -173,6 +177,13 @@ struct NoteListView: View {
         modelContext.insert(note)
     }
 
+    /// Deletes notes at positions in the visible list.
+    ///
+    /// The offsets come from the `ForEach` over ``visibleNotes``, so they must be
+    /// resolved against that same filtered and sorted array rather than against
+    /// every note, or the wrong notes would be deleted while searching.
+    ///
+    /// - Parameter offsets: Positions within ``visibleNotes``.
     private func deleteNotes(at offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(visibleNotes[index])

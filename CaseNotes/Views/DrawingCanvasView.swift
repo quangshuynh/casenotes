@@ -74,6 +74,8 @@ struct DrawingCanvasView: UIViewRepresentable {
             self.onDrawingChanged = onDrawingChanged
         }
 
+        /// Forwards every canvas change, including programmatic ones, which is
+        /// why the caller gates tracking until after it loads a stored drawing.
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
             onDrawingChanged()
         }

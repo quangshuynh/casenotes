@@ -17,6 +17,10 @@ import SwiftUI
 struct MarkdownText: View {
     let source: String
 
+    /// The parsed source.
+    ///
+    /// Parsing happens per render rather than being cached. Note bodies are
+    /// small, and holding parsed state would mean invalidating it on every edit.
     private var document: MarkdownDocument {
         MarkdownDocument(source)
     }
@@ -60,6 +64,10 @@ struct MarkdownText: View {
         return Theme.Spacing.medium
     }
 
+    /// Lays out one parsed block.
+    ///
+    /// - Parameter block: The block to render.
+    /// - Returns: The view for that block, styled for reading.
     @ViewBuilder
     private func blockView(for block: MarkdownDocument.Block) -> some View {
         switch block {
@@ -157,6 +165,13 @@ struct MarkdownText: View {
         return styled
     }
 
+    /// Maps a Markdown heading level onto a text style.
+    ///
+    /// Levels beyond three share one style, since notes rarely nest deeper and
+    /// smaller steps stop reading as headings at all.
+    ///
+    /// - Parameter level: The heading level, starting at one.
+    /// - Returns: The font for that level.
     private func headingFont(for level: Int) -> Font {
         switch level {
         case 1: .title2.weight(.semibold)

@@ -38,6 +38,7 @@ struct AppLockView: View {
         }
     }
 
+    /// Shown while the app is locked, explaining the last failure if there was one.
     private var lockedScreen: some View {
         ContentUnavailableView {
             Label("CaseNotes Locked", systemImage: "lock.fill")

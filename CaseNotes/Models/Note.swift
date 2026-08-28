@@ -49,4 +49,14 @@ final class Note {
         self.eventDate = eventDate
         self.folder = folder
     }
+
+    /// The title to show, falling back to a placeholder for untitled notes.
+    ///
+    /// Notes are identified by title throughout the interface, so every surface
+    /// needs the same fallback. Keeping it on the model stops the list, the
+    /// reader, and exports from drifting apart.
+    var displayTitle: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Untitled Note" : trimmed
+    }
 }

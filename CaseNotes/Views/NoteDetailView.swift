@@ -24,7 +24,7 @@ struct NoteDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                Text(displayTitle)
+                Text(note.displayTitle)
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Theme.Colors.textPrimary)
 
@@ -108,12 +108,6 @@ struct NoteDetailView: View {
         }
     }
 
-    /// The title to display, falling back to a placeholder for untitled notes.
-    private var displayTitle: String {
-        let trimmed = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Untitled Note" : trimmed
-    }
-
     /// The three ways a note can leave the app.
     ///
     /// They are kept distinct because they serve different intents: a copy is
@@ -133,7 +127,7 @@ struct NoteDetailView: View {
 
             ShareLink(
                 item: NoteExport.markdown(for: note, includingAttribution: true),
-                subject: Text(displayTitle),
+                subject: Text(note.displayTitle),
                 message: Text("A note from CaseNotes")
             ) {
                 Label("Share Note", systemImage: "square.and.arrow.up")

@@ -21,6 +21,7 @@ struct NoteEditorView: View {
         case create
         case edit
 
+        /// Title shown while the editor is open.
         var navigationTitle: String {
             switch self {
             case .create: "New Note"

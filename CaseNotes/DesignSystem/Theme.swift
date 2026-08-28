@@ -63,14 +63,12 @@ enum Theme {
         static let small: CGFloat = 8
         static let medium: CGFloat = 12
         static let large: CGFloat = 16
-        static let xLarge: CGFloat = 24
     }
 
     /// Corner radii for surfaces and controls.
     enum Radius {
         static let small: CGFloat = 8
         static let medium: CGFloat = 14
-        static let large: CGFloat = 20
     }
 }
 

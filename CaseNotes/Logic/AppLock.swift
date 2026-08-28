@@ -46,6 +46,11 @@ enum AppLockError: LocalizedError {
 /// nothing leaves the device: the framework reports success or failure and that
 /// is the whole of it.
 struct LocalDeviceAuthenticator: DeviceAuthenticator {
+    /// Presents the system authentication prompt.
+    ///
+    /// - Parameter reason: Text shown by the system prompt.
+    /// - Throws: The `LAError` reported by LocalAuthentication, or
+    ///   ``AppLockError`` when the framework gives no error of its own.
     func authenticate(reason: String) async throws {
         let context = LAContext()
         var availabilityError: NSError?

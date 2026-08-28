@@ -62,7 +62,7 @@ enum NoteExport {
         locale: Locale = .autoupdatingCurrent,
         timeZone: TimeZone = .autoupdatingCurrent
     ) -> String {
-        var sections: [String] = ["# \(displayTitle(for: note))"]
+        var sections: [String] = ["# \(note.displayTitle)"]
 
         if let eventDate = note.eventDate {
             let formatted = eventDate.formatted(
@@ -115,7 +115,7 @@ enum NoteExport {
         let unsafe = CharacterSet(charactersIn: "/\\:*?\"<>|")
             .union(.controlCharacters)
 
-        let cleaned = displayTitle(for: note)
+        let cleaned = note.displayTitle
             .components(separatedBy: unsafe)
             .joined(separator: " ")
             .split(whereSeparator: \.isWhitespace)
@@ -128,14 +128,6 @@ enum NoteExport {
         return String(cleaned.prefix(60))
     }
 
-    /// The note's title, or a placeholder when it has none.
-    ///
-    /// - Parameter note: The note being exported.
-    /// - Returns: A non-empty title.
-    static func displayTitle(for note: Note) -> String {
-        let trimmed = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Untitled Note" : trimmed
-    }
 }
 
 /// A note packaged as a Markdown file for the share sheet.

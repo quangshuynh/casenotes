@@ -29,50 +29,8 @@ struct FolderListView: View {
 
     var body: some View {
         List {
-            Section("Library") {
-                scopeLink(for: .all, systemImage: "tray.full")
-                scopeLink(for: .unfiled, systemImage: "tray")
-            }
-
-            Section("Folders") {
-                if folders.isEmpty {
-                    Text("No folders yet.")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.Colors.textTertiary)
-                        .listRowBackground(Theme.Colors.surface)
-                }
-
-                ForEach(folders) { folder in
-                    scopeLink(for: .folder(folder), systemImage: "folder")
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                folderPendingDeletion = folder
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-
-                            Button {
-                                beginRenaming(folder)
-                            } label: {
-                                Label("Rename", systemImage: "pencil")
-                            }
-                            .tint(Theme.Colors.accent)
-                        }
-                        .contextMenu {
-                            Button {
-                                beginRenaming(folder)
-                            } label: {
-                                Label("Rename Folder", systemImage: "pencil")
-                            }
-
-                            Button(role: .destructive) {
-                                folderPendingDeletion = folder
-                            } label: {
-                                Label("Delete Folder", systemImage: "trash")
-                            }
-                        }
-                }
-            }
+            librarySection
+            folderSection
         }
         .appCanvasBackground()
         .navigationTitle("CaseNotes")
@@ -86,46 +44,23 @@ struct FolderListView: View {
                 }
             }
         }
-        .alert("New Folder", isPresented: $isCreatingFolder) {
-            TextField("Name", text: $nameDraft)
-
-            Button("Create") {
-                createFolder()
-            }
-            .disabled(trimmedNameDraft.isEmpty)
-
-            Button("Cancel", role: .cancel) {}
-        }
-        .alert(
+        .folderNameAlert(
+            "New Folder",
+            confirmTitle: "Create",
+            isPresented: $isCreatingFolder,
+            name: $nameDraft,
+            onConfirm: createFolder
+        )
+        .folderNameAlert(
             "Rename Folder",
-            isPresented: Binding(
-                get: { folderBeingRenamed != nil },
-                set: { presented in
-                    if !presented {
-                        folderBeingRenamed = nil
-                    }
-                }
-            )
-        ) {
-            TextField("Name", text: $nameDraft)
-
-            Button("Rename") {
-                renameFolder()
-            }
-            .disabled(trimmedNameDraft.isEmpty)
-
-            Button("Cancel", role: .cancel) {}
-        }
+            confirmTitle: "Rename",
+            isPresented: presence(of: $folderBeingRenamed),
+            name: $nameDraft,
+            onConfirm: renameFolder
+        )
         .confirmationDialog(
             "Delete Folder?",
-            isPresented: Binding(
-                get: { folderPendingDeletion != nil },
-                set: { presented in
-                    if !presented {
-                        folderPendingDeletion = nil
-                    }
-                }
-            ),
+            isPresented: presence(of: $folderPendingDeletion),
             titleVisibility: .visible,
             presenting: folderPendingDeletion
         ) { folder in
@@ -136,6 +71,57 @@ struct FolderListView: View {
             Button("Cancel", role: .cancel) {}
         } message: { folder in
             Text(deletionMessage(for: folder))
+        }
+    }
+
+    /// Scopes that always exist, independent of how notes are filed.
+    private var librarySection: some View {
+        Section("Library") {
+            scopeLink(for: .all, systemImage: "tray.full")
+            scopeLink(for: .unfiled, systemImage: "tray")
+        }
+    }
+
+    /// The user's folders, each offering rename and delete.
+    private var folderSection: some View {
+        Section("Folders") {
+            if folders.isEmpty {
+                Text("No folders yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Colors.textTertiary)
+                    .listRowBackground(Theme.Colors.surface)
+            }
+
+            ForEach(folders) { folder in
+                scopeLink(for: .folder(folder), systemImage: "folder")
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            folderPendingDeletion = folder
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+
+                        Button {
+                            beginRenaming(folder)
+                        } label: {
+                            Label("Rename", systemImage: "pencil")
+                        }
+                        .tint(Theme.Colors.accent)
+                    }
+                    .contextMenu {
+                        Button {
+                            beginRenaming(folder)
+                        } label: {
+                            Label("Rename Folder", systemImage: "pencil")
+                        }
+
+                        Button(role: .destructive) {
+                            folderPendingDeletion = folder
+                        } label: {
+                            Label("Delete Folder", systemImage: "trash")
+                        }
+                    }
+            }
         }
     }
 
@@ -191,8 +177,27 @@ struct FolderListView: View {
         return count == 1 ? "1 note" : "\(count) notes"
     }
 
+    /// The typed folder name with surrounding whitespace removed.
     private var trimmedNameDraft: String {
         nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A boolean binding that follows whether an optional holds a value.
+    ///
+    /// Alerts and dialogs are driven by `Bool`, while the thing they act on is
+    /// naturally an optional. This bridges the two and clears the optional when
+    /// the presentation is dismissed.
+    ///
+    /// - Parameter value: The optional state driving the presentation.
+    /// - Returns: A binding that reads as `true` while the value is set.
+    private func presence<Value>(of value: Binding<Value?>) -> Binding<Bool> {
+        Binding {
+            value.wrappedValue != nil
+        } set: { isPresented in
+            if !isPresented {
+                value.wrappedValue = nil
+            }
+        }
     }
 
     /// Spells out that deleting a folder keeps its notes.
@@ -212,15 +217,20 @@ struct FolderListView: View {
         }
     }
 
+    /// Opens the rename alert primed with a folder's current name.
+    ///
+    /// - Parameter folder: The folder to rename.
     private func beginRenaming(_ folder: Folder) {
         nameDraft = folder.name
         folderBeingRenamed = folder
     }
 
+    /// Inserts a folder using the typed name.
     private func createFolder() {
         modelContext.insert(Folder(name: trimmedNameDraft))
     }
 
+    /// Applies the typed name to the folder being renamed, then closes the alert.
     private func renameFolder() {
         folderBeingRenamed?.name = trimmedNameDraft
         folderBeingRenamed = nil
@@ -244,4 +254,39 @@ struct FolderListView: View {
         FolderListView()
     }
     .modelContainer(for: [Note.self, Folder.self], inMemory: true)
+}
+
+private extension View {
+    /// Presents an alert asking for a folder name.
+    ///
+    /// Creating and renaming ask exactly the same question, so they share one
+    /// presentation rather than two nearly identical alert blocks.
+    ///
+    /// - Parameters:
+    ///   - title: Alert title.
+    ///   - confirmTitle: Label for the confirming button.
+    ///   - isPresented: Whether the alert is showing.
+    ///   - name: The name being typed.
+    ///   - onConfirm: Runs when the user confirms a non-empty name.
+    /// - Returns: The view with the naming alert attached.
+    func folderNameAlert(
+        _ title: String,
+        confirmTitle: String,
+        isPresented: Binding<Bool>,
+        name: Binding<String>,
+        onConfirm: @escaping () -> Void
+    ) -> some View {
+        alert(title, isPresented: isPresented) {
+            TextField("Name", text: name)
+
+            Button(confirmTitle, action: onConfirm)
+                .disabled(
+                    name.wrappedValue
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .isEmpty
+                )
+
+            Button("Cancel", role: .cancel) {}
+        }
+    }
 }

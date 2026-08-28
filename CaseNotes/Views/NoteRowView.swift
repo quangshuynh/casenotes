@@ -24,7 +24,7 @@ struct NoteRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             HStack(spacing: Theme.Spacing.small) {
-                Text(displayTitle)
+                Text(note.displayTitle)
                     .font(.headline)
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
@@ -89,12 +89,6 @@ struct NoteRowView: View {
         } else {
             Text(note.updatedAt.formatted(date: .abbreviated, time: .omitted))
         }
-    }
-
-    /// The title to display, falling back to a placeholder for untitled notes.
-    private var displayTitle: String {
-        let trimmed = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Untitled Note" : trimmed
     }
 
     /// A single-line preview of the note body.
