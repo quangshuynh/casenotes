@@ -12,7 +12,7 @@ import SwiftUI
 struct CaseNotesApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppLockView()
         }
         .modelContainer(for: Note.self)
     }
