@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/casenotes-logo.png" alt="CaseNotes app icon" width="140">
+</p>
+
 # CaseNotes
 
 [![CI](https://github.com/quangshuynh/casenotes/actions/workflows/ci.yml/badge.svg)](https://github.com/quangshuynh/casenotes/actions/workflows/ci.yml)
