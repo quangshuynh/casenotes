@@ -1,0 +1,40 @@
+:root {
+  --casenotes-ink: #203331;
+  --casenotes-accent: #2f6f68;
+  --casenotes-paper: #fbf8f1;
+}
+
+.wy-side-nav-search,
+.wy-nav-top {
+  background: var(--casenotes-accent);
+}
+
+.wy-nav-content-wrap {
+  background: var(--casenotes-paper);
+}
+
+.wy-nav-content {
+  max-width: 880px;
+}
+
+.rst-content h1,
+.rst-content h2,
+.rst-content h3 {
+  color: var(--casenotes-ink);
+}
+
+.rst-content a {
+  color: var(--casenotes-accent);
+}
+
+.rst-content code {
+  overflow-wrap: anywhere;
+}
+
+.casenotes-logo {
+  margin: 0 0 1.5rem;
+}
+
+.casenotes-logo img {
+  border-radius: 22%;
+}

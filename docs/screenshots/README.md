@@ -1,7 +1,7 @@
-# Screenshots
+# Screenshot guidance
 
-Captures used by the project README live here. Use synthetic note content only,
-never personal notes.
+Captures prepared for repository documentation live here. Use synthetic note
+content only, never personal notes.
 
 Suggested set, captured on an iPhone simulator in dark appearance:
 
@@ -14,5 +14,5 @@ Suggested set, captured on an iPhone simulator in dark appearance:
 | `drawing-editor.png` | PencilKit canvas with the system tool picker |
 | `app-lock.png` | Lock screen shown before authentication |
 
-Capture with the simulator running the app, then reference the files from the
-Screenshots section of the root README.
+Capture with the simulator running the app. Add only screenshots that explain
+current behavior, and reference them from the relevant documentation page.

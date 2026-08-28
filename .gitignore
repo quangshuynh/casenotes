@@ -91,3 +91,6 @@ fastlane/test_output
 #
 # CONTEXT.md is kept in the working copy only, not in version control.
 CONTEXT.md
+
+# Generated documentation
+site/

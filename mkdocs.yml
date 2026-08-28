@@ -1,0 +1,24 @@
+site_name: CaseNotes
+site_description: Technical documentation for the CaseNotes iOS app
+site_url: https://quangshuynh.github.io/casenotes/
+repo_url: https://github.com/quangshuynh/casenotes
+repo_name: quangshuynh/casenotes
+edit_uri: edit/main/docs/
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages: [bash, swift]
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Features: features.md
+  - Architecture: architecture.md
+  - Persistence and Privacy: persistence-and-privacy.md
+  - Content and Export: content-and-export.md
+  - Accessibility: accessibility.md
+  - Testing and CI: testing-and-ci.md
+  - Development: development.md
+  - Limitations: limitations.md
+extra_css:
+  - stylesheets/extra.css
+strict: true
