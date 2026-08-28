@@ -79,6 +79,8 @@ struct NoteEditorView: View {
                     .focused($focusedField, equals: .body)
                     .frame(minHeight: 220)
                     .accessibilityLabel("Note Body")
+            } footer: {
+                Text("Markdown is supported. Use # for headings, * for emphasis, - for lists, > for quotes, and backticks for code.")
             }
             .listRowBackground(Theme.Colors.surface)
 

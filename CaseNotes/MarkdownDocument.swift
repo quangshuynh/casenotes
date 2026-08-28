@@ -1,0 +1,221 @@
+//
+//  MarkdownDocument.swift
+//  CaseNotes
+//
+//  Created by q on 8/27/26.
+//
+
+import Foundation
+
+/// A note body parsed into renderable Markdown blocks.
+///
+/// Foundation's `AttributedString` Markdown parser records block structure as
+/// `PresentationIntent` attributes but does not render it, and SwiftUI's `Text`
+/// only honours inline styling. This type therefore does the one piece the
+/// platform leaves out: it groups the parsed runs back into blocks so the view
+/// layer can lay out headings, lists, quotes, and code.
+///
+/// The source string is never rewritten. It stays the note's stored form, and
+/// parsing happens on the way to the screen.
+struct MarkdownDocument: Equatable {
+    /// A single top-level piece of a note body.
+    ///
+    /// Inline styling such as bold, italic, inline code, and links stays on the
+    /// `AttributedString` payload and is applied by the renderer.
+    enum Block: Equatable {
+        case paragraph(AttributedString)
+        case heading(level: Int, text: AttributedString)
+        /// - Parameters:
+        ///   - ordinal: The item number for ordered lists, `nil` for bulleted lists.
+        ///   - depth: Nesting level, starting at zero for a top-level list.
+        case listItem(ordinal: Int?, depth: Int, text: AttributedString)
+        case blockQuote(AttributedString)
+        case codeBlock(language: String?, code: String)
+        case thematicBreak
+    }
+
+    let blocks: [Block]
+
+    /// Parses a Markdown source string.
+    ///
+    /// Malformed Markdown never fails: the parser is asked for a partial result,
+    /// and if even that is impossible the source is kept as a single plain
+    /// paragraph so no note text is ever lost on screen.
+    ///
+    /// - Parameter source: The raw note body as the user typed it.
+    init(_ source: String) {
+        guard !source.isEmpty else {
+            blocks = []
+            return
+        }
+
+        guard let attributed = try? AttributedString(
+            markdown: source,
+            options: AttributedString.MarkdownParsingOptions(
+                allowsExtendedAttributes: true,
+                interpretedSyntax: .full,
+                failurePolicy: .returnPartiallyParsedIfPossible
+            )
+        ) else {
+            blocks = [.paragraph(AttributedString(source))]
+            return
+        }
+
+        blocks = Self.blocks(from: attributed)
+    }
+
+    /// The document reduced to plain text, one line per block.
+    ///
+    /// Useful anywhere Markdown syntax would be noise rather than structure.
+    var plainText: String {
+        blocks.compactMap { block in
+            switch block {
+            case let .paragraph(text), let .blockQuote(text):
+                String(text.characters)
+            case let .heading(_, text):
+                String(text.characters)
+            case let .listItem(_, _, text):
+                String(text.characters)
+            case let .codeBlock(_, code):
+                code
+            case .thematicBreak:
+                nil
+            }
+        }
+        .joined(separator: "\n")
+    }
+
+    /// Collapses a note body into a single line of prose for list previews.
+    ///
+    /// - Parameter source: The raw note body.
+    /// - Returns: The text with Markdown syntax and line breaks removed.
+    static func plainPreview(of source: String) -> String {
+        MarkdownDocument(source)
+            .plainText
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    /// Regroups parsed runs into blocks.
+    ///
+    /// Runs arrive flat, each tagged with the chain of block intents it sits
+    /// inside, innermost first. Runs sharing a chain belong to the same block,
+    /// so consecutive runs are gathered while that chain holds steady.
+    private static func blocks(from attributed: AttributedString) -> [Block] {
+        var blocks: [Block] = []
+        var currentIdentity: [Int] = []
+        var currentIntent: PresentationIntent?
+        var currentText = AttributedString()
+        var isFirstRun = true
+
+        func flush() {
+            if let block = block(for: currentIntent, text: currentText) {
+                blocks.append(block)
+            }
+            currentText = AttributedString()
+        }
+
+        for run in attributed.runs {
+            let intent = run.presentationIntent
+            let identity = intent?.components.map(\.identity) ?? []
+
+            if isFirstRun {
+                isFirstRun = false
+            } else if identity != currentIdentity {
+                flush()
+            }
+
+            currentIdentity = identity
+            currentIntent = intent
+
+            // A soft break is delivered as a space. Notes are written as prose
+            // more often than as Markdown, so a line the user broke by hand is
+            // kept broken rather than reflowed into the paragraph.
+            if run.inlinePresentationIntent?.contains(.softBreak) == true {
+                currentText.append(AttributedString("\n"))
+            } else {
+                currentText.append(attributed[run.range])
+            }
+        }
+
+        if !isFirstRun {
+            flush()
+        }
+
+        return blocks
+    }
+
+    /// Classifies one group of runs using its chain of block intents.
+    ///
+    /// - Parameters:
+    ///   - intent: The presentation intent shared by the group.
+    ///   - text: The group's accumulated text.
+    /// - Returns: The matching block, or `nil` when the group carries no content.
+    private static func block(
+        for intent: PresentationIntent?,
+        text: AttributedString
+    ) -> Block? {
+        var stripped = text
+        stripped.presentationIntent = nil
+
+        guard let components = intent?.components else {
+            return stripped.characters.isEmpty ? nil : .paragraph(stripped)
+        }
+
+        var listDepth = 0
+        var innermostOrdinal: Int?
+        var isOrdered: Bool?
+        var isQuoted = false
+
+        // Components run innermost first, so the first list intent encountered
+        // is the one that owns this item. Later list intents only add depth.
+        for component in components {
+            switch component.kind {
+            case let .header(level):
+                return .heading(level: level, text: stripped)
+            case let .codeBlock(languageHint):
+                let code = String(stripped.characters)
+                    .trimmingCharacters(in: .newlines)
+                return .codeBlock(language: languageHint, code: code)
+            case .thematicBreak:
+                return .thematicBreak
+            case let .listItem(ordinal):
+                if innermostOrdinal == nil {
+                    innermostOrdinal = ordinal
+                }
+            case .orderedList:
+                listDepth += 1
+                if isOrdered == nil {
+                    isOrdered = true
+                }
+            case .unorderedList:
+                listDepth += 1
+                if isOrdered == nil {
+                    isOrdered = false
+                }
+            case .blockQuote:
+                isQuoted = true
+            default:
+                break
+            }
+        }
+
+        if stripped.characters.isEmpty {
+            return nil
+        }
+
+        if let isOrdered {
+            return .listItem(
+                ordinal: isOrdered ? innermostOrdinal : nil,
+                depth: max(0, listDepth - 1),
+                text: stripped
+            )
+        }
+
+        if isQuoted {
+            return .blockQuote(stripped)
+        }
+
+        return .paragraph(stripped)
+    }
+}

@@ -73,9 +73,12 @@ struct NoteRowView: View {
         return trimmed.isEmpty ? "Untitled Note" : trimmed
     }
 
-    /// A single-paragraph preview of the note body with leading whitespace removed.
+    /// A single-line preview of the note body.
+    ///
+    /// Markdown syntax is stripped so a heading or a bulleted list reads as
+    /// prose in the list rather than as raw source.
     private var preview: String {
-        note.body.trimmingCharacters(in: .whitespacesAndNewlines)
+        MarkdownDocument.plainPreview(of: note.body)
     }
 }
 

@@ -71,9 +71,10 @@ struct NoteDetailView: View {
         }
     }
 
-    /// The note text, or a quiet placeholder when the note is still empty.
+    /// The rendered note text, or a quiet placeholder when the note is still empty.
     ///
-    /// Selection is enabled so passages can be copied without entering the editor.
+    /// Bodies are stored as Markdown source and rendered only for reading, so
+    /// the text the user typed is always what is persisted and shared.
     @ViewBuilder
     private var noteBody: some View {
         if note.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -82,11 +83,7 @@ struct NoteDetailView: View {
                 .italic()
                 .foregroundStyle(Theme.Colors.textTertiary)
         } else {
-            Text(note.body)
-                .font(.body)
-                .lineSpacing(Theme.Spacing.xSmall)
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .textSelection(.enabled)
+            MarkdownText(source: note.body)
         }
     }
 
