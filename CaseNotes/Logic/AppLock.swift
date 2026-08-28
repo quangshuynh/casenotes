@@ -96,6 +96,16 @@ final class AppLockController {
     private let authenticator: DeviceAuthenticator
     private let reason: String
 
+    /// Whether a system prompt is already on screen.
+    ///
+    /// The authentication sheet takes the scene out of the active phase and puts
+    /// it back again, so a scene phase change can ask to authenticate while the
+    /// prompt that caused it is still showing. Without this guard the user is
+    /// answered with a second prompt stacked on the first. Not observed: no view
+    /// renders from it.
+    @ObservationIgnored
+    private var isAuthenticating = false
+
     /// - Parameters:
     ///   - authenticator: How the user proves who they are. Defaults to the
     ///     LocalAuthentication backed implementation, and is replaced by a stub
@@ -115,7 +125,18 @@ final class AppLockController {
     ///
     /// A failure leaves the app locked and reports why, so the user can retry
     /// deliberately rather than being trapped on a blank screen.
+    ///
+    /// A request that arrives while a prompt is already showing is ignored
+    /// rather than queued, since the answer to the prompt already on screen is
+    /// the answer to both.
     func authenticate() async {
+        guard !isAuthenticating else {
+            return
+        }
+
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+
         errorMessage = nil
 
         do {

@@ -76,8 +76,12 @@ struct NoteTests {
         #expect(fetchedNote.eventDate == eventDate)
     }
 
+    /// Folders and drawings were each added as a new entity plus an optional
+    /// relationship, which SwiftData migrates on its own. The reopen uses the
+    /// same model list as `CaseNotesApp`, so this covers the schema a shipped
+    /// build actually opens an older store with rather than a subset of it.
     @Test
-    func existingNoteStoresOpenAfterFoldersAreAdded() throws {
+    func existingNoteStoresOpenAfterFoldersAndDrawingsAreAdded() throws {
         let url = URL.temporaryDirectory
             .appending(path: "casenotes-migration-\(UUID().uuidString).store")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -97,14 +101,26 @@ struct NoteTests {
 
         // Reopen the same file with the current schema.
         let container = try ModelContainer(
-            for: Note.self, Folder.self,
+            for: Note.self, Folder.self, NoteDrawing.self,
             configurations: ModelConfiguration(url: url)
         )
         let context = ModelContext(container)
         let notes = try context.fetch(FetchDescriptor<Note>())
 
         #expect(notes.count == 1)
-        #expect(notes.first?.title == "Legacy Note")
-        #expect(notes.first?.folder == nil)
+
+        let note = try #require(notes.first)
+        #expect(note.title == "Legacy Note")
+        #expect(note.body == "Written before folders existed.")
+        #expect(note.folder == nil)
+        #expect(note.drawing == nil)
+
+        // The entities the older store never held come back empty rather than
+        // failing to open.
+        let folders = try context.fetch(FetchDescriptor<Folder>())
+        let drawings = try context.fetch(FetchDescriptor<NoteDrawing>())
+
+        #expect(folders.isEmpty)
+        #expect(drawings.isEmpty)
     }
 }

@@ -14,6 +14,12 @@ first-party Apple frameworks. It combines Markdown writing, folders, PencilKit
 sketches, and a device-authentication interface gate without accounts,
 analytics, or cloud services.
 
+<p align="center">
+  <img src="docs/screenshots/notes-dark.png" alt="All Notes with a pinned note at the top, a note carrying a drawing, and folder names" width="240">
+  <img src="docs/screenshots/note-markdown-dark.png" alt="Reading view rendering a heading, emphasis, a list, and a block quote" width="240">
+  <img src="docs/screenshots/drawing-dark.png" alt="PencilKit canvas with the system tool picker" width="240">
+</p>
+
 ## Highlights
 
 - Draft-based editing with explicit Save and Cancel behavior

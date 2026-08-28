@@ -245,4 +245,36 @@ struct MarkdownDocumentTests {
         #expect(MarkdownDocument.plainPreview(of: "").isEmpty)
         #expect(MarkdownDocument.plainPreview(of: "   \n  ").isEmpty)
     }
+
+    // MARK: Reuse
+
+    /// The reading view keeps one of these across updates, so a stale answer
+    /// would show the previous note's text under the current note's title.
+    @Test
+    func theCacheAlwaysAnswersForTheSourceItWasAsked() {
+        let cache = ParsedMarkdown()
+
+        #expect(cache.document(for: "# Site Visit") == MarkdownDocument("# Site Visit"))
+        #expect(cache.document(for: "# Follow Up") == MarkdownDocument("# Follow Up"))
+        #expect(cache.document(for: "# Site Visit") == MarkdownDocument("# Site Visit"))
+    }
+
+    @Test
+    func repeatingTheSameSourceReturnsTheSameDocument() {
+        let cache = ParsedMarkdown()
+        let body = "Walked the north wing.\n\n- Photograph the stairwell"
+
+        #expect(cache.document(for: body) == cache.document(for: body))
+    }
+
+    /// An empty body is the state a new note opens in, and it has to survive the
+    /// cache starting out empty itself.
+    @Test
+    func anEmptySourceIsCachedAsHavingNoBlocks() {
+        let cache = ParsedMarkdown()
+
+        #expect(cache.document(for: "").blocks.isEmpty)
+        #expect(cache.document(for: "Written later").blocks.count == 1)
+        #expect(cache.document(for: "").blocks.isEmpty)
+    }
 }

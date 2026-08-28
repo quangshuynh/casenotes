@@ -17,21 +17,18 @@ import SwiftUI
 struct MarkdownText: View {
     let source: String
 
-    /// The parsed source, held rather than recomputed.
+    /// The parse, kept across updates.
     ///
     /// Parsing is the expensive part of showing a note, and a reading view is
     /// re-evaluated for reasons that have nothing to do with its text, such as
-    /// presenting a sheet. Keeping the result in state means a note is parsed
-    /// when it arrives and when it is edited, rather than on every update.
-    @State private var document: MarkdownDocument
-
-    init(source: String) {
-        self.source = source
-        _document = State(initialValue: MarkdownDocument(source))
-    }
+    /// presenting a sheet. The cache is a reference type on purpose:
+    /// `State(initialValue:)` evaluates its argument on every initializer call
+    /// and then discards all but the first, so holding the document itself in
+    /// state would still parse the note on every update.
+    @State private var cache = ParsedMarkdown()
 
     var body: some View {
-        let blocks = document.blocks
+        let blocks = cache.document(for: source).blocks
 
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
@@ -42,11 +39,6 @@ struct MarkdownText: View {
                         spacingAbove(block, previous: index > 0 ? blocks[index - 1] : nil)
                     )
             }
-        }
-        // State survives the view being recreated with new inputs, so the
-        // parsed document has to be refreshed explicitly after an edit.
-        .onChange(of: source) { _, updated in
-            document = MarkdownDocument(updated)
         }
     }
 

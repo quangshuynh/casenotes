@@ -9,6 +9,15 @@ device passcode as a system-controlled fallback.
 Authentication is isolated behind the `DeviceAuthenticator` protocol. Unit
 tests can therefore exercise lock policy without displaying the system prompt.
 
+The app declares `NSFaceIDUsageDescription`, which iOS requires before an app
+may use Face ID.
+
+Only one prompt is raised at a time. The system authentication sheet moves the
+scene out of the active phase and back into it, so the scene lifecycle can ask
+to unlock while the prompt that caused the change is still showing. A request
+made while an attempt is in flight is ignored rather than answered with a second
+prompt.
+
 ## Scene lifecycle
 
 The app locks when the scene becomes inactive or enters the background. When an

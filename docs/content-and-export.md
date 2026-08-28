@@ -13,6 +13,9 @@ blocks, and thematic breaks. Hand-authored line breaks remain visible.
 Parsing requests a partial result for malformed input. If parsing still fails,
 the renderer presents the source as plain text so content remains readable.
 
+![Reading view rendering a heading, bold and italic text, a bulleted list, a
+block quote, and inline code](screenshots/note-markdown-dark.png){ width="300" }
+
 ## List previews
 
 Rows show a compact plain-text preview with Markdown syntax removed. Only the

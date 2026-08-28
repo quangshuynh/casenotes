@@ -23,6 +23,27 @@ struct AppLockControllerTests {
         }
     }
 
+    /// An authenticator that lets a test act while an attempt is in flight.
+    ///
+    /// Stands in for the system sheet being on screen: the hook runs after the
+    /// attempt has started and before it resolves. It fires once, so a
+    /// controller that authenticates again cannot recurse forever.
+    private final class ReentrantAuthenticator: DeviceAuthenticator {
+        var result: Result<Void, Error> = .success(())
+        var duringAttempt: (() async -> Void)?
+        private(set) var attempts = 0
+
+        func authenticate(reason: String) async throws {
+            attempts += 1
+
+            let hook = duringAttempt
+            duringAttempt = nil
+            await hook?()
+
+            try result.get()
+        }
+    }
+
     private struct StubError: LocalizedError {
         var errorDescription: String? { "Face ID was not recognized." }
     }
@@ -143,6 +164,39 @@ struct AppLockControllerTests {
 
         #expect(lock.isUnlocked == false)
         #expect(lock.errorMessage == "Face ID was not recognized.")
+    }
+
+    /// The authentication sheet makes the scene inactive and then active again,
+    /// so the scene phase asks to unlock while the prompt it caused is still up.
+    /// One prompt has to be enough, or the user answers Face ID twice.
+    @Test
+    func aSceneReturningToActiveDuringAPromptDoesNotStackASecondOne() async {
+        let authenticator = ReentrantAuthenticator()
+        let lock = AppLockController(authenticator: authenticator)
+        authenticator.duringAttempt = { [weak lock] in
+            await lock?.scenePhaseChanged(to: .active)
+        }
+
+        await lock.authenticate()
+
+        #expect(authenticator.attempts == 1)
+        #expect(lock.isUnlocked)
+    }
+
+    /// The guard covers a prompt in flight, not the app afterwards. A locked app
+    /// still has to be able to ask again.
+    @Test
+    func authenticationCanBeRequestedAgainOnceAPromptHasFinished() async {
+        let authenticator = ReentrantAuthenticator()
+        authenticator.result = .failure(StubError())
+        let lock = AppLockController(authenticator: authenticator)
+        await lock.authenticate()
+
+        authenticator.result = .success(())
+        await lock.authenticate()
+
+        #expect(authenticator.attempts == 2)
+        #expect(lock.isUnlocked)
     }
 
     @Test

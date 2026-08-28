@@ -22,6 +22,13 @@ model. Directly binding controls to a SwiftData model would write changes
 through immediately and make Cancel unreliable. The drawing editor follows the
 same boundary by holding its live `PKCanvasView` until Done.
 
+![Note editor showing the title and body fields, the Markdown hint, an enabled
+event date, and the folder picker, with Cancel and Save in the navigation
+bar](screenshots/note-editor-dark.png){ width="300" }
+
+Nothing in that screen has reached the store yet. Cancel discards it, and Save
+hands the finished draft to the caller.
+
 For relationship rules, migration coverage, and timestamp behavior, see
 [SwiftData and Persistence](persistence.md). Authentication and scene lifecycle
 behavior are documented separately in [App Lock and Privacy](app-lock-and-privacy.md).

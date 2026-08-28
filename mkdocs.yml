@@ -56,6 +56,10 @@ nav:
       - Accessibility: accessibility.md
   - Reference:
       - Limitations and Status: limitations.md
+exclude_docs: |
+  # Contributor guidance that sits with the screenshots it describes, rather
+  # than a page of the site. The captures themselves are still published.
+  screenshots/README.md
 plugins:
   - search
 markdown_extensions:

@@ -256,3 +256,34 @@ struct MarkdownDocument: Equatable {
         return .paragraph(stripped)
     }
 }
+
+/// Holds the most recent parse so unchanged text is not parsed again.
+///
+/// A reading view is re-evaluated for reasons that have nothing to do with its
+/// text, and parsing a long note on each of those is the one piece of real work
+/// on that path. A reference type is what makes the saving possible: a value
+/// kept in SwiftUI state would have to be produced before it could be stored,
+/// which is the cost being avoided.
+///
+/// The source is the cache key, so the document handed back always belongs to
+/// the text that was asked for.
+final class ParsedMarkdown {
+    private var source = ""
+    private var parsed = MarkdownDocument("")
+
+    /// The parsed form of a note body.
+    ///
+    /// - Parameter source: The raw note body to render.
+    /// - Returns: The document for that exact source, reusing the previous parse
+    ///   when the text has not changed.
+    func document(for source: String) -> MarkdownDocument {
+        guard source != self.source else {
+            return parsed
+        }
+
+        self.source = source
+        parsed = MarkdownDocument(source)
+
+        return parsed
+    }
+}
