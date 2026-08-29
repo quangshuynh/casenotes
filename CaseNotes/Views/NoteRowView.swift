@@ -9,9 +9,13 @@ import SwiftUI
 
 /// A single note summarized for the notes list.
 ///
-/// The row leads with the title, follows with a short preview of the body, and
-/// closes with one low-emphasis metadata line so the note itself stays the
-/// visual focus.
+/// Two lines, scanned rather than read: the title with the date it is filed
+/// under, then a short preview with whatever context the current list is
+/// missing. Everything except the title is low emphasis, so a column of notes
+/// reads as titles with support rather than as a stack of paragraphs.
+///
+/// At accessibility text sizes the row unstacks into plain lines. Density is
+/// worth having until it starts costing legibility, and then it is not.
 struct NoteRowView: View {
     let note: Note
 
@@ -21,81 +25,156 @@ struct NoteRowView: View {
     /// is off by default.
     var showsFolder = false
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            HStack(spacing: Theme.Spacing.small) {
-                Text(note.displayTitle)
-                    .font(.headline)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .lineLimit(1)
+            if dynamicTypeSize.isAccessibilitySize {
+                title
+                preview
+                context
+                date
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                    title
 
-                if note.isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Colors.accent)
-                        .accessibilityLabel("Pinned")
+                    Spacer(minLength: Theme.Spacing.small)
+
+                    date
                 }
 
-                if note.drawing != nil {
-                    Image(systemName: "scribble")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Colors.textTertiary)
-                        .accessibilityLabel("Contains a drawing")
-                }
-            }
+                if hasSecondLine {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                        preview
 
-            if !preview.isEmpty {
-                Text(preview)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .lineLimit(2)
-            }
+                        Spacer(minLength: Theme.Spacing.small)
 
-            HStack(spacing: Theme.Spacing.small) {
-                metadata
-
-                if showsFolder, let folder = note.folder {
-                    HStack(spacing: Theme.Spacing.xSmall) {
-                        Image(systemName: "folder")
-                        Text(folder.displayName)
+                        context
                     }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("In folder \(folder.displayName)")
                 }
             }
-            .font(.caption)
-            .foregroundStyle(Theme.Colors.textTertiary)
         }
         .padding(.vertical, Theme.Spacing.xSmall)
     }
 
+    /// Whether anything belongs on the row's second line.
+    private var hasSecondLine: Bool {
+        !previewText.isEmpty || note.drawing != nil || folderName != nil
+    }
+
+    /// The note's name, with pinning marked beside it.
+    ///
+    /// Pinned notes already sort to the top, so the marker only has to confirm
+    /// why a note is there rather than announce it.
+    private var title: some View {
+        HStack(spacing: Theme.Spacing.xSmall) {
+            Text(note.displayTitle)
+                .font(.headline)
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+
+            if note.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.Colors.accent)
+                    .accessibilityLabel("Pinned")
+            }
+        }
+    }
+
+    /// A short preview of the note body.
+    ///
+    /// Markdown syntax is stripped so a heading or a bulleted list reads as
+    /// prose in the list rather than as raw source.
+    @ViewBuilder
+    private var preview: some View {
+        if !previewText.isEmpty {
+            Text(previewText)
+                .font(.subheadline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+        }
+    }
+
     /// The event date when the note has one, otherwise the last edit date.
     ///
-    /// Only one date is shown so the row keeps a single quiet metadata line.
+    /// Only one date is shown so a row keeps one quiet anchor on the right. The
+    /// event date wins because it is the date the writing is about, and it is
+    /// marked with a symbol so the two cannot be confused.
+    private var date: some View {
+        HStack(spacing: Theme.Spacing.xSmall) {
+            if note.eventDate != nil {
+                Image(systemName: "calendar")
+                    .font(.caption2)
+            }
+
+            Text(ListDateStyle.text(for: shownDate, relativeTo: .now))
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+        .font(.caption)
+        .foregroundStyle(Theme.Colors.textTertiary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(spokenDate)
+    }
+
+    /// Where the note lives and what else it carries.
+    ///
     /// A plain `HStack` is used rather than a `Label` because `List` reserves a
     /// shared icon column for labels, which would leave a gap here and pull the
     /// row separator out of alignment with its neighbours.
     @ViewBuilder
-    private var metadata: some View {
-        if let eventDate = note.eventDate {
-            let formatted = eventDate.formatted(date: .abbreviated, time: .omitted)
+    private var context: some View {
+        if hasContext {
+            HStack(spacing: Theme.Spacing.small) {
+                if note.drawing != nil {
+                    Image(systemName: "scribble")
+                        .accessibilityLabel("Contains a drawing")
+                }
 
-            HStack(spacing: Theme.Spacing.xSmall) {
-                Image(systemName: "calendar")
-                Text(formatted)
+                if let folderName {
+                    HStack(spacing: Theme.Spacing.xSmall) {
+                        Image(systemName: "folder")
+                        Text(folderName)
+                            .lineLimit(1)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("In folder \(folderName)")
+                }
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Event date \(formatted)")
-        } else {
-            Text(note.updatedAt.formatted(date: .abbreviated, time: .omitted))
+            .font(.caption)
+            .foregroundStyle(Theme.Colors.textTertiary)
+            .layoutPriority(1)
         }
     }
 
-    /// A single-line preview of the note body.
-    ///
-    /// Markdown syntax is stripped so a heading or a bulleted list reads as
-    /// prose in the list rather than as raw source.
-    private var preview: String {
+    /// Whether the row has anything to say about where the note lives.
+    private var hasContext: Bool {
+        note.drawing != nil || folderName != nil
+    }
+
+    /// The folder to name on the row, when the list is showing more than one.
+    private var folderName: String? {
+        guard showsFolder else {
+            return nil
+        }
+
+        return note.folder?.displayName
+    }
+
+    /// The one date the row shows.
+    private var shownDate: Date {
+        note.eventDate ?? note.updatedAt
+    }
+
+    /// The row's date spelled in full, and said as what it means.
+    private var spokenDate: String {
+        let spelled = ListDateStyle.spokenText(for: shownDate)
+        return note.eventDate == nil ? "Edited \(spelled)" : "Event date \(spelled)"
+    }
+
+    /// A short plain-text preview of the note body.
+    private var previewText: String {
         MarkdownDocument.plainPreview(of: note.body)
     }
 }
@@ -107,8 +186,11 @@ struct NoteRowView: View {
                 title: "Site Visit",
                 body: "Walked the north wing. Photograph the stairwell next time.",
                 isPinned: true
-            )
+            ),
+            showsFolder: true
         )
+        .workspaceRow()
+
         NoteRowView(
             note: Note(
                 title: "Follow Up",
@@ -116,6 +198,7 @@ struct NoteRowView: View {
                 eventDate: Date(timeIntervalSince1970: 1_700_086_400)
             )
         )
+        .workspaceRow()
     }
-    .listRowBackground(Theme.Colors.surface)
+    .workspaceList()
 }

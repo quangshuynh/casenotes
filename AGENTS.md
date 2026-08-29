@@ -65,6 +65,24 @@ The app target uses Xcode synchronized file groups. New files inside
 - Every icon-only control needs an accessibility label. Use semantic fonts so
   Dynamic Type keeps working.
 
+## Interface conventions
+
+The browsing screens are a workspace, not a card gallery. Rows sit flat on the
+canvas and are separated by hairlines, grouped by quiet capitalized section
+headers, and reached through plain `NavigationStack` pushes. Reach for
+`workspaceList()` and `workspaceRow()` rather than restyling a list per screen,
+and keep cards for the editor, where a distinct surface is the point.
+
+- Density never costs a target. Rows keep the stated minimum height, symbol
+  columns scale with `@ScaledMetric`, and any row that pairs a title with a
+  trailing date unstacks at accessibility text sizes.
+- Folder rows must not imply hierarchy. Folders are flat, so nothing in the
+  interface may indent or nest them until nested folders actually exist.
+- Note creation goes through `NoteDraft.insertNote(into:at:)` wherever it is
+  offered, which is what keeps a new note's first save out of version history.
+- Visual work must not change Save and Cancel, authored timestamps, or version
+  history semantics.
+
 ## Testing expectations
 
 - Swift Testing (`@Test`, `#expect`, `#require`) for unit tests.

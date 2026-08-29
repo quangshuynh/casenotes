@@ -43,6 +43,8 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 - `NoteHistory` owns version history: when a previous version is kept, the
   order history reads in, and what restoring one does.
 - `MarkdownDocument` converts Markdown source into renderable blocks.
+- `ListDateStyle` decides how much of a date a compact row spells out, and
+  formats it for an injected calendar and locale.
 - `NoteExport` defines the exact text and file representation leaving the app.
 - `AppLockController` owns authentication and scene lifecycle policy behind a
   `DeviceAuthenticator` protocol.
@@ -55,7 +57,8 @@ entire long note. Folder scope counts are accumulated in one pass.
 
 The version history list uses the same plain-text preview strategy as the notes
 list, so showing a long history parses no Markdown. A historical body is parsed
-only when that version is opened.
+only when that version is opened. The library's Recent rows show a title and a
+date only, so opening the app parses nothing.
 
 Drawing bytes use external SwiftData storage and are read only when the drawing
 view or editor opens. Rasterization is keyed to the drawing edit timestamp so

@@ -60,6 +60,28 @@ rather than restating signatures. AGENTS.md has the specifics.
 Persistence changes deserve extra care. Think through delete rules and schema
 compatibility before writing code, and prove the result with a test.
 
+## Interface work
+
+The browsing surfaces were redesigned into a warm dark workspace. Obsidian was
+a reference for density and hierarchy only. Do not copy its layout, icons, or
+chrome, and never describe CaseNotes as Obsidian-like. The identity is the warm
+palette already in the asset catalog, reached through `Theme`.
+
+- Prefer flat rows, hairlines, and quiet section headers over cards. The editor
+  keeps its raised surfaces on purpose, because read and write modes should not
+  look the same.
+- Extend the existing semantic tokens before adding new ones, and never restate
+  a color in a view.
+- Visuals must not imply persistence the model does not have. Folders are flat,
+  so no indentation, disclosure triangles, or trees.
+- A redesign is not a licence to add persisted state. No `@Model` change and no
+  new stored setting belongs in a visual slice.
+- Screenshot the result in Simulator. Two defects in this pass were only visible
+  that way: a plain list footer drawing black instead of the canvas, and a fixed
+  symbol column overlapping its label at accessibility text sizes.
+- After a UI change, check `docs/`, the README, and the screenshots before
+  calling it done.
+
 ## Version history
 
 Revisions record authored text only: title, body, and event date. Keep the

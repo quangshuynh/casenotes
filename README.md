@@ -22,6 +22,8 @@ analytics, or cloud services.
 
 ## Highlights
 
+- A compact library of scopes, folders, and recently edited notes
+- Note and folder creation from the library, a folder, or an empty scope
 - Draft-based editing with explicit Save and Cancel behavior
 - Markdown reading mode, search, sorting, pinning, and optional event dates
 - Version history that keeps previous text and restores it without losing the

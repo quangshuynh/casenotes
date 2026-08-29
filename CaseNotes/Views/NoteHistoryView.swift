@@ -57,53 +57,110 @@ struct NoteHistoryView: View {
                     } label: {
                         NoteRevisionRowView(revision: revision)
                     }
-                    .listRowBackground(Theme.Colors.surface)
+                    .workspaceRow()
                 }
+            } header: {
+                WorkspaceSectionHeader("Previous Versions")
             } footer: {
                 Text("The note as it reads now is the current version and is not listed here.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
+                    .padding(.top, Theme.Spacing.small)
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: 0,
+                            leading: Theme.Spacing.large,
+                            bottom: Theme.Spacing.medium,
+                            trailing: Theme.Spacing.large
+                        )
+                    )
+                    // A plain list draws its own ground behind a footer, which
+                    // is black rather than the warm canvas the rest of the
+                    // screen uses.
+                    .listRowBackground(Theme.Colors.canvas)
             }
         }
-        .appCanvasBackground()
+        .workspaceList()
     }
 }
 
 /// One previous version summarized for the history list.
 ///
-/// The layout follows the notes list: title, a short preview, then one quiet
-/// metadata line. The preview is the plain-text form rather than rendered
+/// The layout follows a note row: the title with its date alongside, then a
+/// short preview. The preview is the plain-text form rather than rendered
 /// Markdown, so showing a long history costs no parsing beyond the opening of
 /// each body.
 private struct NoteRevisionRowView: View {
     let revision: NoteRevision
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            Text(revision.displayTitle)
-                .font(.headline)
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .lineLimit(1)
+            if dynamicTypeSize.isAccessibilitySize {
+                title
+                date
+                previewText
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                    title
 
-            if !preview.isEmpty {
-                Text(preview)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .lineLimit(2)
+                    Spacer(minLength: Theme.Spacing.small)
+
+                    date
+                }
+
+                previewText
             }
-
-            Text(formattedDate)
-                .font(.caption)
-                .foregroundStyle(Theme.Colors.textTertiary)
-                .accessibilityLabel("Edited \(formattedDate)")
         }
         .padding(.vertical, Theme.Spacing.xSmall)
     }
 
+    /// The title this version carried.
+    private var title: some View {
+        Text(revision.displayTitle)
+            .font(.headline)
+            .foregroundStyle(Theme.Colors.textPrimary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+    }
+
+    /// A short plain-text preview of the version.
+    @ViewBuilder
+    private var previewText: some View {
+        if !preview.isEmpty {
+            Text(preview)
+                .font(.subheadline)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+        }
+    }
+
     /// When this version was written, which is what tells two versions apart.
+    private var date: some View {
+        Text(formattedDate)
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(Theme.Colors.textTertiary)
+            .lineLimit(1)
+            .accessibilityLabel("Edited \(spokenDate)")
+    }
+
+    /// The version's date as the row shows it.
     ///
-    /// The time is included because versions of the same note are often minutes
-    /// rather than days apart.
+    /// Compact, like every other browsing row, but keeping the time of day:
+    /// versions of one note are often minutes rather than days apart, so a bare
+    /// day would leave two of them looking identical.
     private var formattedDate: String {
-        revision.updatedAt.formatted(date: .abbreviated, time: .shortened)
+        ListDateStyle.text(
+            for: revision.updatedAt,
+            relativeTo: .now,
+            includingTime: true
+        )
+    }
+
+    /// The same date spelled in full for VoiceOver.
+    private var spokenDate: String {
+        ListDateStyle.spokenText(for: revision.updatedAt)
     }
 
     /// A short plain-text preview of the version's body.
