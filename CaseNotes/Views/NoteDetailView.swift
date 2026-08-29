@@ -159,12 +159,15 @@ struct NoteDetailView: View {
         }
     }
 
-    /// The three ways a note can leave the app.
+    /// The ways a note can leave the app.
     ///
     /// They are kept distinct because they serve different intents: a copy is
     /// pasted into something the user is already writing and must stay clean,
     /// while a share or a file export is a standalone artifact where a quiet
-    /// footer belongs.
+    /// footer belongs. The two file exports differ in kind rather than in
+    /// wrapping: Markdown hands over the source the note is stored as, and a
+    /// PDF hands over the note rendered as a document for someone who is going
+    /// to read or print it rather than edit it.
     @ViewBuilder
     private var shareActions: some View {
         Button {
@@ -192,6 +195,16 @@ struct NoteDetailView: View {
             )
         ) {
             Label("Export Markdown File", systemImage: "arrow.down.document")
+        }
+
+        ShareLink(
+            item: PDFNoteFile(note: note),
+            preview: SharePreview(
+                NoteExport.suggestedPDFFileName(for: note),
+                image: Image(systemName: "doc.richtext")
+            )
+        ) {
+            Label("Export PDF File", systemImage: "doc.richtext")
         }
     }
 }

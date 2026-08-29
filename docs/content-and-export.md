@@ -51,13 +51,59 @@ text. Whitespace is collapsed to a single line.
 
 ## Export contract
 
-The exporter accepts injected locale and time-zone values so date output is
-deterministic in tests. The generated document contains:
+A note leaves the app in one of two forms, and the difference is deliberate.
+Markdown export is the authored source, so it preserves the syntax the note is
+stored as and can be edited again elsewhere. PDF export is a rendered document,
+so it shows the note the way read mode shows it rather than exposing the syntax.
+Neither replaces the other.
+
+Both exporters accept injected locale and time-zone values so date output is
+deterministic in tests, and both take only authored content: the title, the
+event date when there is one, and the body. Creation and edit timestamps, folder
+membership, pinned state, version history, and read-mode collapse state stay
+private to application bookkeeping and reach neither format.
+
+### Markdown file
+
+The generated document contains:
 
 1. The note title as a Markdown heading.
 2. The event date, when present.
 3. The stored body without rewriting it.
 4. A text notice when a drawing is attached.
 
-Creation and edit timestamps, folder membership, and pinned state stay private
-to application bookkeeping. Drawings are not embedded in the Markdown file.
+Drawings are not embedded in the Markdown file, because a Markdown document
+cannot carry one without a companion image.
+
+### PDF file
+
+The generated document contains, in order:
+
+1. The note title, then the event date when there is one, above a rule.
+2. The body with its Markdown rendered: headings, bold, italic, inline code,
+   links, ordered and unordered lists with nesting, block quotes, fenced code
+   blocks, and thematic breaks.
+3. The note's current drawing, when it has one.
+
+The page is US Letter with a one inch margin, and long notes paginate across as
+many pages as they need. The document is typeset rather than screenshotted, so
+its text can be selected, searched, and printed at full quality, and the file
+stays small. Only the drawing is an image.
+
+A thematic break renders as a plain rule. Read mode's collapse controls are
+interface, not content, so no chevron or collapsed marker appears in a PDF, and
+the whole note is exported whatever is folded on screen at the time.
+
+The PDF uses a light document appearance in both app appearances. A file meant
+to be read, shared, and printed should not arrive with a dark background because
+the app was in dark mode when it was exported.
+
+Markdown links keep their styling and are written as real PDF links, so a reader
+can follow them. Code blocks are set in a monospaced face on a tinted panel and
+wrap long lines rather than running off the page. There is no syntax
+highlighting.
+
+A drawing is rasterized at the aspect ratio it was drawn in. One too tall for
+the room left on a page moves to the next page, and one too tall for a whole
+page is scaled to fit rather than cropped. A drawing that is empty, or whose
+stored bytes no longer decode, is left out and the note's text still exports.
