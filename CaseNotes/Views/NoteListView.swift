@@ -10,6 +10,11 @@ import SwiftUI
 
 /// The notes belonging to one scope, searchable and sortable.
 ///
+/// The scope's name is carried by the navigation bar, so the screen itself
+/// leads with a thin strip stating how many notes are here and how they are
+/// ordered. That keeps the ordering visible instead of hidden behind an icon,
+/// and leaves the rest of the screen to the notes.
+///
 /// Every note is fetched and then narrowed in memory by ``NoteOrganizer``. At
 /// the scale this app is built for that keeps one code path for filtering,
 /// sorting, and search, and it keeps those rules testable rather than buried in
@@ -64,32 +69,22 @@ struct NoteListView: View {
             } else if visible.isEmpty {
                 ContentUnavailableView.search(text: searchText)
             } else {
-                noteList(visible)
+                VStack(spacing: 0) {
+                    contextBar(count: visible.count)
+                    noteList(visible)
+                }
             }
         }
         .background(Theme.Colors.canvas)
         .navigationTitle(scope.title)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Search notes")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Sort", selection: $sortOption) {
-                        ForEach(NoteSortOption.allCases) { option in
-                            Text(option.rawValue)
-                                .tag(option)
-                        }
-                    }
-                } label: {
-                    Label("Sort Notes", systemImage: "arrow.up.arrow.down")
-                }
-            }
-
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     isPresentingNewNote = true
                 } label: {
-                    Label("New Note", systemImage: "plus")
+                    Label("New Note", systemImage: "square.and.pencil")
                 }
             }
         }
@@ -100,19 +95,81 @@ struct NoteListView: View {
                     mode: .create,
                     folders: folders
                 ) { draft in
-                    createNote(from: draft)
+                    draft.insertNote(into: modelContext)
                 }
             }
         }
     }
 
+    /// The strip above the list: how much is here, and in what order.
+    ///
+    /// - Parameter count: How many notes the list is showing.
+    /// - Returns: The context strip.
+    private func contextBar(count: Int) -> some View {
+        HStack(spacing: Theme.Spacing.small) {
+            Text(count == 1 ? "1 note" : "\(count) notes")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(Theme.Colors.textTertiary)
+
+            Spacer(minLength: Theme.Spacing.small)
+
+            sortMenu
+        }
+        .padding(.horizontal, Theme.Spacing.large)
+        .frame(minHeight: Theme.Layout.minimumRowHeight)
+        .background(Theme.Colors.canvas)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Theme.Colors.separator)
+                .frame(height: 1)
+        }
+    }
+
+    /// The ordering control, labelled with the ordering it is currently using.
+    ///
+    /// The visible capsule stays small while the tappable area keeps a full
+    /// row's height, so a compact control is not a harder one to hit.
+    private var sortMenu: some View {
+        Menu {
+            Picker("Sort", selection: $sortOption) {
+                ForEach(NoteSortOption.allCases) { option in
+                    Text(option.rawValue)
+                        .tag(option)
+                }
+            }
+        } label: {
+            HStack(spacing: Theme.Spacing.xSmall) {
+                Image(systemName: "arrow.up.arrow.down")
+                Text(sortOption.rawValue)
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(Theme.Colors.accent)
+            .padding(.horizontal, Theme.Spacing.small)
+            .padding(.vertical, Theme.Spacing.xSmall)
+            .background(Theme.Colors.surface, in: Capsule())
+            .frame(minHeight: Theme.Layout.minimumRowHeight)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Sort Notes")
+        .accessibilityValue(sortOption.rawValue)
+    }
+
     /// Shown when a scope holds no notes at all, as opposed to no search results.
+    ///
+    /// The creation action is offered here because an empty scope is exactly
+    /// where a user is most likely to want one.
     private var emptyState: some View {
-        ContentUnavailableView(
-            scope.title == "All Notes" ? "No Notes" : "No Notes Here",
-            systemImage: "note.text",
-            description: Text(emptyStateDescription)
-        )
+        ContentUnavailableView {
+            Label(scope == .all ? "No Notes" : "No Notes Here", systemImage: "note.text")
+        } description: {
+            Text(emptyStateDescription)
+        } actions: {
+            Button("New Note") {
+                isPresentingNewNote = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
     }
 
     /// Explains why a scope is empty in terms of what it collects.
@@ -139,7 +196,7 @@ struct NoteListView: View {
                 } label: {
                     NoteRowView(note: note, showsFolder: scope == .all)
                 }
-                .listRowBackground(Theme.Colors.surface)
+                .workspaceRow()
                 .swipeActions(edge: .leading) {
                     Button {
                         withAnimation(motion) {
@@ -159,7 +216,7 @@ struct NoteListView: View {
             }
             .onDelete(perform: deleteNotes)
         }
-        .appCanvasBackground()
+        .workspaceList()
     }
 
     /// Quick refiling without opening the editor.
@@ -183,18 +240,6 @@ struct NoteListView: View {
         } label: {
             Label("Move to Folder", systemImage: "folder")
         }
-    }
-
-    /// Inserts a note built from a finished draft.
-    ///
-    /// The note is created here rather than in the editor so an abandoned
-    /// composition never reaches the model context.
-    ///
-    /// - Parameter draft: The contents confirmed by the user.
-    private func createNote(from draft: NoteDraft) {
-        let note = Note()
-        draft.apply(to: note)
-        modelContext.insert(note)
     }
 
     /// Deletes notes at positions in the visible list.

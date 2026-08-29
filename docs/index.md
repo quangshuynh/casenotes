@@ -15,6 +15,8 @@ dependency.
 ## What you get
 
 - Create, read, edit, pin, search, sort, and delete notes
+- Browse a library of scopes, folders, and recently edited notes
+- Create a note or a folder without leaving the library
 - Organize notes into flat folders or leave them Unfiled
 - Render Markdown in a dedicated reading view
 - Read and restore previous versions of a note

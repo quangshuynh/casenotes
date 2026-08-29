@@ -12,7 +12,13 @@ it. Authored content changes update `updatedAt`; opening, closing, or moving a
 note between folders does not.
 
 The list supports title and body substring search, Last Updated and Date
-Created ordering, and pinned-first grouping within either order.
+Created ordering, and pinned-first grouping within either order. A strip above
+the list states how many notes are showing and which ordering is active, and
+opens the ordering menu in one tap.
+
+Rows are compact: the title with its date alongside, then a short preview with
+the folder the note is filed in when the list mixes folders. At accessibility
+text sizes a row unstacks into plain lines so nothing is truncated.
 
 ![All Notes showing a pinned note above a more recently edited one, a note
 marked as carrying a drawing, folder names, and an event date](screenshots/notes-dark.png){ width="300" }
@@ -20,7 +26,7 @@ marked as carrying a drawing, folder names, and an event date](screenshots/notes
 ## Version history
 
 Saving a change to an existing note keeps the version it replaces. Version
-History is reached from the note's toolbar, lists previous versions newest
+History is reached from the note's toolbar menu, lists previous versions newest
 first, and opens each one read only before anything is restored.
 
 Restoring makes a previous version current and keeps the version that was
@@ -36,10 +42,21 @@ Drawings are current-state attachments rather than versioned content. Restoring
 a previous version changes the text and leaves the note's drawing exactly as it
 is.
 
+## Library
+
+The root screen is the workspace navigator. Library holds the All Notes and
+Unfiled scopes, Folders holds the ones you made, and Recent lists the notes
+edited most recently so current work is one tap away.
+
+Creation is available without leaving the screen: the toolbar offers New Note
+and New Folder, the Folders heading carries its own folder action, and a
+folder's context menu can start a note already filed in it. Creating a note
+while browsing a folder or an empty folder files it there.
+
 ## Folders
 
 Folders can be created, renamed, and deleted. All Notes and Unfiled are explicit
-browsing scopes. A note belongs to at most one folder.
+browsing scopes. A note belongs to at most one folder. Folders do not nest.
 
 Deleting a folder does not delete its notes. SwiftData nullifies the
 relationship, and the confirmation explains that affected notes move to

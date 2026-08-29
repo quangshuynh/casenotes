@@ -111,4 +111,26 @@ struct NoteDraft: Equatable {
 
         return true
     }
+
+    /// Creates a note from this draft and inserts it into a context.
+    ///
+    /// Creating goes straight through ``apply(to:at:)`` rather than through
+    /// ``NoteHistory``, which is what keeps a new note's first save out of
+    /// version history: there is no earlier state to recover. Every screen that
+    /// offers note creation shares this one path so that stays true wherever a
+    /// note is started from.
+    ///
+    /// - Parameters:
+    ///   - context: The context the new note is inserted into.
+    ///   - date: The creation and edit timestamp. Injectable so tests can
+    ///     assert on an exact value.
+    /// - Returns: The inserted note.
+    @discardableResult
+    func insertNote(into context: ModelContext, at date: Date = Date()) -> Note {
+        let note = Note(createdAt: date, updatedAt: date)
+        apply(to: note, at: date)
+        context.insert(note)
+
+        return note
+    }
 }

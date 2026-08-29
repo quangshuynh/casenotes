@@ -8,7 +8,11 @@
 import SwiftData
 import SwiftUI
 
-/// The root screen: the places notes can be browsed from.
+/// The root screen: the workspace navigator every other screen is reached from.
+///
+/// Three groups answer three different questions. Library holds the scopes that
+/// always exist, Folders holds the ones the user made, and Recent answers what
+/// was being worked on without needing a scope at all.
 ///
 /// Folder management lives here: creating, renaming, and deleting. Deletion is
 /// confirmed and states plainly that the notes are kept, because that is the one
@@ -26,11 +30,30 @@ struct FolderListView: View {
     @State private var folderBeingRenamed: Folder?
     @State private var folderPendingDeletion: Folder?
     @State private var nameDraft = ""
+    @State private var isComposingNote = false
+    @State private var composingIntoFolder: Folder?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The leading symbol column, grown with the text it sits beside.
+    ///
+    /// A fixed column would keep its width while the symbol inside it scaled,
+    /// so at large text sizes the icon spilled over the label next to it.
+    @ScaledMetric(relativeTo: .body) private var rowIconWidth = Theme.Layout.rowIconWidth
+
+    /// How many recently edited notes the root offers as a shortcut.
+    ///
+    /// Short on purpose. Recent is a way back into current work, not a second
+    /// notes list, and a long one would push the folders off the screen.
+    private static let recentLimit = 5
 
     /// Animation for rows arriving and leaving, honoring Reduce Motion.
     private var motion: Animation? {
         reduceMotion ? nil : Theme.Motion.reorder
+    }
+
+    /// Whether the store holds nothing at all, as opposed to no folders.
+    private var isLibraryEmpty: Bool {
+        folders.isEmpty && notes.isEmpty
     }
 
     var body: some View {
@@ -39,20 +62,18 @@ struct FolderListView: View {
         // once for the number and again for its spoken form.
         let counts = ScopeCounts(notes: notes)
 
-        return List {
-            librarySection(counts)
-            folderSection(counts)
+        return Group {
+            if isLibraryEmpty {
+                emptyLibrary
+            } else {
+                libraryList(counts)
+            }
         }
-        .appCanvasBackground()
+        .background(Theme.Colors.canvas)
         .navigationTitle("CaseNotes")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    nameDraft = ""
-                    isCreatingFolder = true
-                } label: {
-                    Label("New Folder", systemImage: "folder.badge.plus")
-                }
+                createMenu
             }
         }
         .folderNameAlert(
@@ -83,6 +104,70 @@ struct FolderListView: View {
         } message: { folder in
             Text(deletionMessage(for: folder))
         }
+        .sheet(isPresented: $isComposingNote) {
+            NavigationStack {
+                NoteEditorView(
+                    draft: NoteDraft(folder: composingIntoFolder),
+                    mode: .create,
+                    folders: folders
+                ) { draft in
+                    draft.insertNote(into: modelContext)
+                }
+            }
+        }
+    }
+
+    /// The navigator itself.
+    ///
+    /// - Parameter counts: Note counts for every scope.
+    /// - Returns: The configured list.
+    private func libraryList(_ counts: ScopeCounts) -> some View {
+        List {
+            librarySection(counts)
+            folderSection(counts)
+            recentSection
+        }
+        .workspaceList()
+    }
+
+    /// Both ways to create, kept together so neither is hunted for.
+    private var createMenu: some View {
+        Menu {
+            Button {
+                beginComposingNote(in: nil)
+            } label: {
+                Label("New Note", systemImage: "square.and.pencil")
+            }
+
+            Button {
+                beginCreatingFolder()
+            } label: {
+                Label("New Folder", systemImage: "folder.badge.plus")
+            }
+        } label: {
+            Label("New", systemImage: "plus")
+        }
+    }
+
+    /// Shown when there is nothing to navigate yet.
+    ///
+    /// Both creation actions are offered here rather than only in the toolbar,
+    /// because this is the one screen where a user has nothing else to do.
+    private var emptyLibrary: some View {
+        ContentUnavailableView {
+            Label("No Notes Yet", systemImage: "tray")
+        } description: {
+            Text("Write a note, or make a folder to keep related notes together.")
+        } actions: {
+            Button("New Note") {
+                beginComposingNote(in: nil)
+            }
+            .buttonStyle(.borderedProminent)
+
+            Button("New Folder") {
+                beginCreatingFolder()
+            }
+        }
     }
 
     /// Scopes that always exist, independent of how notes are filed.
@@ -90,23 +175,25 @@ struct FolderListView: View {
     /// - Parameter counts: Note counts for every scope.
     /// - Returns: The library section.
     private func librarySection(_ counts: ScopeCounts) -> some View {
-        Section("Library") {
+        Section {
             scopeLink(for: .all, systemImage: "tray.full", counts: counts)
             scopeLink(for: .unfiled, systemImage: "tray", counts: counts)
+        } header: {
+            WorkspaceSectionHeader("Library")
         }
     }
 
-    /// The user's folders, each offering rename and delete.
+    /// The user's folders, each offering note creation, rename, and delete.
     ///
     /// - Parameter counts: Note counts for every scope.
     /// - Returns: The folders section.
     private func folderSection(_ counts: ScopeCounts) -> some View {
-        Section("Folders") {
+        Section {
             if folders.isEmpty {
-                Text("No folders yet.")
+                Text("No folders yet. Notes without one stay in Unfiled.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.Colors.textTertiary)
-                    .listRowBackground(Theme.Colors.surface)
+                    .workspaceRow()
             }
 
             ForEach(folders) { folder in
@@ -127,6 +214,12 @@ struct FolderListView: View {
                     }
                     .contextMenu {
                         Button {
+                            beginComposingNote(in: folder)
+                        } label: {
+                            Label("New Note in Folder", systemImage: "square.and.pencil")
+                        }
+
+                        Button {
                             beginRenaming(folder)
                         } label: {
                             Label("Rename Folder", systemImage: "pencil")
@@ -138,6 +231,37 @@ struct FolderListView: View {
                             Label("Delete Folder", systemImage: "trash")
                         }
                     }
+            }
+        } header: {
+            WorkspaceSectionHeader("Folders") {
+                Button {
+                    beginCreatingFolder()
+                } label: {
+                    Label("Folder", systemImage: "plus")
+                        .labelStyle(.titleAndIcon)
+                }
+                .accessibilityLabel("New Folder")
+            }
+        }
+    }
+
+    /// A way straight back into the notes most recently worked on.
+    @ViewBuilder
+    private var recentSection: some View {
+        let recent = NoteOrganizer.recent(notes, limit: Self.recentLimit)
+
+        if !recent.isEmpty {
+            Section {
+                ForEach(recent) { note in
+                    NavigationLink {
+                        NoteDetailView(note: note)
+                    } label: {
+                        RecentNoteRowView(note: note)
+                    }
+                    .workspaceRow()
+                }
+            } header: {
+                WorkspaceSectionHeader("Recent")
             }
         }
     }
@@ -151,7 +275,8 @@ struct FolderListView: View {
     /// - Parameters:
     ///   - scope: The scope to browse.
     ///   - systemImage: Symbol shown alongside the scope name.
-    /// - Returns: A navigation row styled for the folder list.
+    ///   - counts: Note counts for every scope.
+    /// - Returns: A navigation row styled for the workspace list.
     private func scopeLink(
         for scope: NoteScope,
         systemImage: String,
@@ -160,14 +285,16 @@ struct FolderListView: View {
         NavigationLink {
             NoteListView(scope: scope)
         } label: {
-            HStack {
-                Label {
-                    Text(scope.title)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                } icon: {
-                    Image(systemName: systemImage)
-                        .foregroundStyle(Theme.Colors.accent)
-                }
+            HStack(spacing: Theme.Spacing.small) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(Theme.Colors.accent)
+                    .frame(width: rowIconWidth, alignment: .leading)
+
+                Text(scope.title)
+                    .font(.body)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .lineLimit(1)
 
                 Spacer(minLength: Theme.Spacing.small)
 
@@ -178,7 +305,7 @@ struct FolderListView: View {
                     .accessibilityLabel(counts.spokenCount(for: scope))
             }
         }
-        .listRowBackground(Theme.Colors.surface)
+        .workspaceRow()
     }
 
     /// The typed folder name with surrounding whitespace removed.
@@ -219,6 +346,21 @@ struct FolderListView: View {
         default:
             return "\(count) notes will be kept and moved to Unfiled."
         }
+    }
+
+    /// Opens the naming alert for a new folder.
+    private func beginCreatingFolder() {
+        nameDraft = ""
+        isCreatingFolder = true
+    }
+
+    /// Opens the editor for a new note.
+    ///
+    /// - Parameter folder: The folder the note starts out filed in, or `nil` to
+    ///   start it unfiled.
+    private func beginComposingNote(in folder: Folder?) {
+        composingIntoFolder = folder
+        isComposingNote = true
     }
 
     /// Opens the rename alert primed with a folder's current name.
@@ -263,6 +405,63 @@ struct FolderListView: View {
         FolderListView()
     }
     .modelContainer(for: [Note.self, Folder.self], inMemory: true)
+}
+
+/// A recently edited note, summarized for the root screen.
+///
+/// Deliberately thinner than a row in the notes list: a name and when it was
+/// touched, with no preview. Recent is a shortcut back into work, and parsing
+/// Markdown for it would make opening the app pay for a list nobody reads.
+private struct RecentNoteRowView: View {
+    let note: Note
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var rowIconWidth = Theme.Layout.rowIconWidth
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.small) {
+            Image(systemName: "doc.text")
+                .font(.body)
+                .foregroundStyle(Theme.Colors.textTertiary)
+                .frame(width: rowIconWidth, alignment: .leading)
+                .accessibilityHidden(true)
+
+            if dynamicTypeSize.isAccessibilitySize {
+                // A name and a date cannot share a line at these sizes without
+                // one of them being cut in half, so they stop sharing one.
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    title
+                    date
+                }
+            } else {
+                title
+
+                Spacer(minLength: Theme.Spacing.small)
+
+                date
+            }
+        }
+    }
+
+    /// The note's name.
+    private var title: some View {
+        Text(note.displayTitle)
+            .font(.body)
+            .foregroundStyle(Theme.Colors.textPrimary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+    }
+
+    /// When the note was last edited.
+    private var date: some View {
+        Text(ListDateStyle.text(for: note.updatedAt, relativeTo: .now))
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(Theme.Colors.textTertiary)
+            .lineLimit(1)
+            .accessibilityLabel(
+                "Edited \(ListDateStyle.spokenText(for: note.updatedAt))"
+            )
+    }
 }
 
 /// Note counts for every scope shown in the folder list.

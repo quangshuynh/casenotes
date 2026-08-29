@@ -113,4 +113,31 @@ enum NoteOrganizer {
             }
         }
     }
+
+    /// The notes edited most recently, newest first.
+    ///
+    /// Pinning is deliberately ignored here. Pinning says a note matters, while
+    /// this list answers a different question: what was being worked on. Ties
+    /// fall back to the title so a short list does not reshuffle between
+    /// updates.
+    ///
+    /// - Parameters:
+    ///   - notes: Every note available to the view.
+    ///   - limit: How many notes to return at most.
+    /// - Returns: Up to `limit` notes, ordered by edit time.
+    static func recent(_ notes: [Note], limit: Int) -> [Note] {
+        guard limit > 0 else {
+            return []
+        }
+
+        let ordered = notes.sorted { lhs, rhs in
+            if lhs.updatedAt != rhs.updatedAt {
+                return lhs.updatedAt > rhs.updatedAt
+            }
+
+            return lhs.displayTitle.localizedCompare(rhs.displayTitle) == .orderedAscending
+        }
+
+        return Array(ordered.prefix(limit))
+    }
 }

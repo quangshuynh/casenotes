@@ -230,4 +230,34 @@ struct NoteOrganizerTests {
         #expect(NoteScope.unfiled.folder == nil)
         #expect(NoteScope.folder(folder).folder?.name == "Site Visits")
     }
+
+    @Test
+    func recentNotesAreTheMostRecentlyEditedOnes() throws {
+        let context = try makeContext()
+        let oldest = Note(title: "Oldest", updatedAt: date(0))
+        let middle = Note(title: "Middle", updatedAt: date(60))
+        let newest = Note(title: "Newest", updatedAt: date(120))
+        context.insert(oldest)
+        context.insert(middle)
+        context.insert(newest)
+
+        let result = NoteOrganizer.recent([oldest, newest, middle], limit: 2)
+
+        #expect(result.map(\.title) == ["Newest", "Middle"])
+    }
+
+    @Test
+    func recentNotesIgnorePinning() throws {
+        let context = try makeContext()
+        // Pinning says a note matters. Recent answers what was worked on last,
+        // which is a different question, so the pin must not reorder it.
+        let pinnedButOld = Note(title: "Pinned", updatedAt: date(0), isPinned: true)
+        let edited = Note(title: "Edited", updatedAt: date(60))
+        context.insert(pinnedButOld)
+        context.insert(edited)
+
+        let result = NoteOrganizer.recent([pinnedButOld, edited], limit: 5)
+
+        #expect(result.map(\.title) == ["Edited", "Pinned"])
+    }
 }

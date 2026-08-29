@@ -83,6 +83,20 @@ enum Theme {
         static let small: CGFloat = 8
         static let medium: CGFloat = 14
     }
+
+    /// Metrics for the compact rows the browsing screens are built from.
+    ///
+    /// Density is the point of these values, so the floor on row height is part
+    /// of the vocabulary rather than an afterthought: a row may be visually
+    /// quiet, but it stays a comfortable target.
+    enum Layout {
+        /// Width reserved for a row's leading symbol so labels line up whether
+        /// or not a row has one.
+        static let rowIconWidth: CGFloat = 26
+
+        /// Smallest height a tappable row is allowed to occupy.
+        static let minimumRowHeight: CGFloat = 44
+    }
 }
 
 extension View {
@@ -96,5 +110,39 @@ extension View {
     func appCanvasBackground() -> some View {
         scrollContentBackground(.hidden)
             .background(Theme.Colors.canvas)
+    }
+
+    /// Styles a browsing list as a workspace: flat rows on the canvas, told
+    /// apart by hairlines rather than by cards.
+    ///
+    /// The minimum row height is stated rather than left to the default so the
+    /// dense look can never quietly shrink a target below it.
+    ///
+    /// - Returns: The list drawn as the app's browsing surface.
+    func workspaceList() -> some View {
+        listStyle(.plain)
+            .environment(\.defaultMinListRowHeight, Theme.Layout.minimumRowHeight)
+            .appCanvasBackground()
+    }
+
+    /// Applies the shared insets, background, and separator tint for a row in a
+    /// workspace list.
+    ///
+    /// Rows carry their own compact padding so a title, a preview, and a
+    /// metadata line stay one visual block. Content is free to grow past the
+    /// minimum height at large Dynamic Type sizes.
+    ///
+    /// - Returns: The row with workspace metrics applied.
+    func workspaceRow() -> some View {
+        listRowInsets(
+            EdgeInsets(
+                top: Theme.Spacing.small,
+                leading: Theme.Spacing.large,
+                bottom: Theme.Spacing.small,
+                trailing: Theme.Spacing.large
+            )
+        )
+        .listRowBackground(Theme.Colors.canvas)
+        .listRowSeparatorTint(Theme.Colors.separator)
     }
 }

@@ -226,4 +226,51 @@ struct NoteDraftTests {
         // discard confirmation, so refiling has to register as a change.
         #expect(refiled != draft)
     }
+
+    @Test
+    func insertingADraftCreatesANoteFiledWhereItWasWritten() throws {
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let folder = Folder(name: "Site Visits")
+        context.insert(folder)
+        let created = Date(timeIntervalSince1970: 1_700_000_000)
+
+        // Creating a note while browsing a folder files it there, which is the
+        // behavior every creation entry point shares.
+        let draft = NoteDraft(
+            title: "  North Wing  ",
+            body: "Walked the north wing.",
+            folder: folder
+        )
+        let note = draft.insertNote(into: context, at: created)
+        try context.save()
+
+        #expect(note.title == "North Wing")
+        #expect(note.body == "Walked the north wing.")
+        #expect(note.folder?.name == "Site Visits")
+        #expect(note.createdAt == created)
+        #expect(note.updatedAt == created)
+        #expect(try context.fetchCount(FetchDescriptor<Note>()) == 1)
+    }
+
+    @Test
+    func creatingANoteKeepsHistoryEmpty() throws {
+        let container = try ModelContainer(
+            for: Note.self, Folder.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+
+        // A new note has no earlier state to recover, so creation must not
+        // write a revision no matter which screen it was started from.
+        let note = NoteDraft(title: "North Wing", body: "First pass.")
+            .insertNote(into: context)
+        try context.save()
+
+        #expect(note.revisions.isEmpty)
+        #expect(try context.fetchCount(FetchDescriptor<NoteRevision>()) == 0)
+    }
 }
