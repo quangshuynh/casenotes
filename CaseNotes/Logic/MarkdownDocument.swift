@@ -34,7 +34,43 @@ struct MarkdownDocument: Equatable {
         case thematicBreak
     }
 
+    /// One region of a note body, as read mode divides it.
+    ///
+    /// A thematic break already reads as a divider between parts of a document,
+    /// so read mode treats it as the head of a region rather than as decoration.
+    /// A region owns the blocks after its break and stops at the next break,
+    /// which is what keeps folding local: collapsing one divider never swallows
+    /// the rest of the note.
+    ///
+    /// The blocks before the first break belong to a region of their own that no
+    /// divider introduces, so nothing is invented above a note's opening.
+    struct Section: Equatable, Identifiable {
+        /// The region's place in the parsed order, counted from zero.
+        ///
+        /// Identity is position rather than content, so two regions that happen
+        /// to read alike stay distinct and a collapsed one keeps its identity
+        /// for as long as the source is unchanged.
+        let id: Int
+
+        /// Whether a thematic break introduces this region.
+        ///
+        /// False only for a note's opening region. A region that is introduced
+        /// by a break but holds no blocks is the natural reading of two breaks
+        /// in a row, and is still a region so the authored dividers all render.
+        let precededByThematicBreak: Bool
+
+        /// The blocks the region holds, without the break that introduces it.
+        let blocks: [Block]
+    }
+
     let blocks: [Block]
+
+    /// The document divided at its thematic breaks.
+    ///
+    /// Computed with the parse rather than on demand, because the reading view
+    /// asks for it on every update and folding a region must not cost a
+    /// re-division of the document.
+    let sections: [Section]
 
     /// Parses a Markdown source string.
     ///
@@ -44,9 +80,20 @@ struct MarkdownDocument: Equatable {
     ///
     /// - Parameter source: The raw note body as the user typed it.
     init(_ source: String) {
+        let parsed = Self.parse(source)
+
+        blocks = parsed
+        sections = Self.sections(from: parsed)
+    }
+
+    /// Parses a source string into blocks.
+    ///
+    /// - Parameter source: The raw note body.
+    /// - Returns: The blocks the source describes, or the source as one plain
+    ///   paragraph when even a partial parse is impossible.
+    private static func parse(_ source: String) -> [Block] {
         guard !source.isEmpty else {
-            blocks = []
-            return
+            return []
         }
 
         guard let attributed = try? AttributedString(
@@ -57,11 +104,58 @@ struct MarkdownDocument: Equatable {
                 failurePolicy: .returnPartiallyParsedIfPossible
             )
         ) else {
-            blocks = [.paragraph(AttributedString(source))]
-            return
+            return [.paragraph(AttributedString(source))]
         }
 
-        blocks = Self.blocks(from: attributed)
+        return blocks(from: attributed)
+    }
+
+    /// Divides parsed blocks into the regions read mode can fold.
+    ///
+    /// Division happens on the parsed `.thematicBreak` blocks, never on the
+    /// source text. That is the whole correctness argument: a run of dashes
+    /// inside a fenced or indented code block parses as code and is not a break,
+    /// `Heading\n---` parses as a setext heading and is not a break, and every
+    /// spelling the parser does accept as a break divides alike.
+    ///
+    /// A note that opens with a break gets no empty region above it, since there
+    /// is nothing there to keep visible.
+    ///
+    /// - Parameter blocks: The document's blocks in reading order.
+    /// - Returns: The regions, in reading order, with the breaks themselves
+    ///   consumed.
+    private static func sections(from blocks: [Block]) -> [Section] {
+        var sections: [Section] = []
+        var current: [Block] = []
+        var precededByThematicBreak = false
+
+        func flush() {
+            guard precededByThematicBreak || !current.isEmpty else {
+                return
+            }
+
+            sections.append(
+                Section(
+                    id: sections.count,
+                    precededByThematicBreak: precededByThematicBreak,
+                    blocks: current
+                )
+            )
+            current = []
+        }
+
+        for block in blocks {
+            if block == .thematicBreak {
+                flush()
+                precededByThematicBreak = true
+            } else {
+                current.append(block)
+            }
+        }
+
+        flush()
+
+        return sections
     }
 
     /// The document reduced to plain text, one line per block.

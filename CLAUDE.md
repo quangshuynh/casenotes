@@ -82,6 +82,20 @@ palette already in the asset catalog, reached through `Theme`.
 - After a UI change, check `docs/`, the README, and the screenshots before
   calling it done.
 
+## Markdown folding
+
+Read mode folds sections at thematic breaks. Constraints when touching it:
+
+- Never implement a boundary by splitting raw source on a line of dashes. Divide
+  the parsed blocks, and check the fenced-code, indented-code, and setext-heading
+  cases before believing a change is correct.
+- Reuse the existing parser and renderer. The section mechanism sits around
+  `MarkdownDocument` and `MarkdownText`, not inside a new one.
+- Folding must not reach the model: no `updatedAt` move, no revision, no schema
+  change, no stored preference. Persisted fold state needs explicit scope.
+- Leave the editor alone. The full source stays visible and natively selectable,
+  which rules out building folding into the editable text control.
+
 ## Version history
 
 Revisions record authored text only: title, body, and event date. Keep the
