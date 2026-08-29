@@ -94,3 +94,5 @@ CONTEXT.md
 
 # Generated documentation
 site/
+
+.claude/
