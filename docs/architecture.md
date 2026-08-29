@@ -42,7 +42,8 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 - `NoteOrganizer` owns scope filtering, search, pinning, and sorting.
 - `NoteHistory` owns version history: when a previous version is kept, the
   order history reads in, and what restoring one does.
-- `MarkdownDocument` converts Markdown source into renderable blocks.
+- `MarkdownDocument` converts Markdown source into renderable blocks, and
+  divides those blocks into the regions read mode can fold.
 - `ListDateStyle` decides how much of a date a compact row spells out, and
   formats it for an injected calendar and locale.
 - `NoteExport` defines the exact text and file representation leaving the app.
@@ -52,8 +53,10 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 ## Rendering work
 
 Markdown parsing is retained in `MarkdownText` state and refreshed only when
-the source changes. List previews parse only an opening fragment instead of an
-entire long note. Folder scope counts are accumulated in one pass.
+the source changes. Section division happens once with the parse rather than on
+demand, so folding a section costs a redraw and no reparsing. List previews
+parse only an opening fragment instead of an entire long note. Folder scope
+counts are accumulated in one pass.
 
 The version history list uses the same plain-text preview strategy as the notes
 list, so showing a long history parses no Markdown. A historical body is parsed

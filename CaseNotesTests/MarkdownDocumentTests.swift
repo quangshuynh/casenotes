@@ -246,6 +246,209 @@ struct MarkdownDocumentTests {
         #expect(MarkdownDocument.plainPreview(of: "   \n  ").isEmpty)
     }
 
+    // MARK: Sections
+
+    /// Convenience for asserting on a region's shape without inspecting text.
+    private func shape(
+        of sections: [MarkdownDocument.Section]
+    ) -> [(id: Int, foldable: Bool, blocks: Int)] {
+        sections.map { ($0.id, $0.precededByThematicBreak, $0.blocks.count) }
+    }
+
+    @Test
+    func aBodyWithNoBreakIsOneRegionThatCannotBeFolded() {
+        let document = MarkdownDocument("# Project\n\nOverview text.")
+
+        #expect(document.sections.count == 1)
+        #expect(document.sections[0].id == 0)
+        #expect(document.sections[0].precededByThematicBreak == false)
+        #expect(document.sections[0].blocks.count == 2)
+    }
+
+    @Test
+    func anEmptyBodyHasNoRegions() {
+        #expect(MarkdownDocument("").sections.isEmpty)
+    }
+
+    @Test
+    func oneBreakLeavesTheOpeningVisibleAndMakesWhatFollowsFoldable() {
+        let document = MarkdownDocument("Intro\n\n---\n\nSection A")
+
+        #expect(shape(of: document.sections).map(\.foldable) == [false, true])
+        #expect(text(of: document.sections[0].blocks.first) == "Intro")
+        #expect(text(of: document.sections[1].blocks.first) == "Section A")
+    }
+
+    /// The rule the feature turns on: a divider owns what follows it and stops
+    /// at the next divider, so folding one never takes the rest of the note.
+    @Test
+    func eachBreakOwnsOnlyTheContentUpToTheNextOne() {
+        let document = MarkdownDocument(
+            "Intro\n\n---\n\nSection A\n\nText A\n\n---\n\nSection B\n\nText B"
+        )
+
+        #expect(shape(of: document.sections).map(\.id) == [0, 1, 2])
+        #expect(shape(of: document.sections).map(\.foldable) == [false, true, true])
+
+        #expect(document.sections[1].blocks.map(text(of:)) == ["Section A", "Text A"])
+        #expect(document.sections[2].blocks.map(text(of:)) == ["Section B", "Text B"])
+    }
+
+    @Test
+    func aBodyThatOpensWithABreakGetsNoEmptyRegionAboveIt() {
+        let document = MarkdownDocument("---\n\nSection A")
+
+        #expect(document.sections.count == 1)
+        #expect(document.sections[0].precededByThematicBreak)
+        #expect(text(of: document.sections[0].blocks.first) == "Section A")
+    }
+
+    @Test
+    func consecutiveBreaksProduceAnEmptyFoldableRegionBetweenThem() {
+        let document = MarkdownDocument("A\n\n---\n\n---\n\nB")
+
+        #expect(shape(of: document.sections).map(\.foldable) == [false, true, true])
+        #expect(document.sections[1].blocks.isEmpty)
+        #expect(text(of: document.sections[2].blocks.first) == "B")
+    }
+
+    @Test
+    func aTrailingBreakEndsInAnEmptyRegionRatherThanBeingDropped() {
+        let document = MarkdownDocument("A\n\n---")
+
+        #expect(shape(of: document.sections).map(\.foldable) == [false, true])
+        #expect(document.sections[1].blocks.isEmpty)
+    }
+
+    /// The correctness requirement behind parsing rather than splitting text: a
+    /// rule inside a fence is code the user wrote, not a divider.
+    @Test
+    func dashesInsideAFencedCodeBlockAreNotARegionBoundary() {
+        let document = MarkdownDocument("A\n\n```text\n---\n```\n\nB")
+
+        #expect(document.sections.count == 1)
+        #expect(document.sections[0].precededByThematicBreak == false)
+        #expect(document.blocks.contains { block in
+            if case let .codeBlock(_, code) = block { return code == "---" }
+            return false
+        })
+    }
+
+    @Test
+    func dashesInsideAnIndentedCodeBlockAreNotARegionBoundary() {
+        let document = MarkdownDocument("A\n\n    ---\n\nB")
+
+        #expect(document.sections.count == 1)
+    }
+
+    /// `Heading` over dashes is a setext heading in Markdown, not a break, and
+    /// splitting the source on a line of dashes would get this wrong.
+    @Test
+    func dashesUnderneathTextAreASetextHeadingRatherThanARegionBoundary() {
+        let document = MarkdownDocument("Section A\n---\n\nBody")
+
+        #expect(document.sections.count == 1)
+
+        guard case let .heading(level, _) = document.blocks.first else {
+            Issue.record("Expected a setext heading")
+            return
+        }
+
+        #expect(level == 2)
+    }
+
+    /// Every spelling the parser accepts as a break divides alike, because the
+    /// division reads the parsed block and never the characters.
+    @Test
+    func everyThematicBreakSpellingDividesTheSameWay() {
+        for rule in ["---", "***", "___", "- - -", "-----"] {
+            let document = MarkdownDocument("A\n\n\(rule)\n\nB")
+
+            #expect(
+                shape(of: document.sections).map(\.foldable) == [false, true],
+                "\(rule) should divide the body"
+            )
+        }
+    }
+
+    @Test
+    func structuredBlocksAroundABreakStayInTheRegionTheyBelongTo() {
+        let document = MarkdownDocument(
+            "# Project\n\n- Alpha\n\n---\n\n> Quoted\n\n```swift\nlet x = 1\n```"
+        )
+
+        #expect(document.sections.count == 2)
+
+        guard case .heading = document.sections[0].blocks[0],
+              case .listItem = document.sections[0].blocks[1],
+              case .blockQuote = document.sections[1].blocks[0],
+              case .codeBlock = document.sections[1].blocks[1]
+        else {
+            Issue.record("Expected the heading and list above the break, the quote and code below")
+            return
+        }
+    }
+
+    @Test
+    func malformedMarkdownStillDividesWithoutCrashing() {
+        let document = MarkdownDocument("**unclosed emphasis and [a broken](link")
+
+        #expect(document.sections.count == 1)
+        #expect(document.sections[0].precededByThematicBreak == false)
+    }
+
+    /// Folding may hide a region on screen, but it must never be able to lose
+    /// text: every block that is not a divider belongs to exactly one region,
+    /// in the order it was written.
+    @Test
+    func regionsCoverEveryBlockThatIsNotABreak() {
+        let source = """
+        # Project
+
+        Overview text.
+
+        ---
+
+        Implementation notes.
+
+        ---
+
+        Testing notes.
+        """
+        let document = MarkdownDocument(source)
+
+        let fromRegions = document.sections.flatMap(\.blocks)
+        let fromBlocks = document.blocks.filter { $0 != .thematicBreak }
+
+        #expect(fromRegions == fromBlocks)
+    }
+
+    /// Collapsed state is keyed by identity, so identity has to be the same
+    /// answer every time for text that has not changed.
+    @Test
+    func regionIdentitiesAreStableForUnchangedSource() {
+        let source = "Intro\n\n---\n\nSection A\n\n---\n\nSection B"
+
+        #expect(MarkdownDocument(source).sections == MarkdownDocument(source).sections)
+        #expect(MarkdownDocument(source).sections.map(\.id) == [0, 1, 2])
+    }
+
+    /// Dividing is presentation. The exporter reads the stored body, so a note
+    /// that reads as several regions still leaves the app whole.
+    @Test
+    func dividingABodyDoesNotChangeWhatAnExportContains() {
+        let body = "Intro\n\n---\n\nSection A\n\n---\n\nSection B"
+        let note = Note(title: "Site Visit", body: body)
+
+        _ = MarkdownDocument(note.body).sections
+
+        #expect(note.body == body)
+        #expect(
+            NoteExport.markdown(for: note, includingAttribution: false)
+                .contains(body)
+        )
+    }
+
     // MARK: Reuse
 
     /// The reading view keeps one of these across updates, so a stale answer

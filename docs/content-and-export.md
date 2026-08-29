@@ -16,6 +16,33 @@ the renderer presents the source as plain text so content remains readable.
 ![Reading view rendering a heading, bold and italic text, a bulleted list, a
 block quote, and inline code](screenshots/note-markdown-dark.png){ width="300" }
 
+## Collapsible sections in read mode
+
+A thematic break divides a note into regions that read mode can fold. Each break
+becomes a divider carrying a collapse control, and it owns the content after it
+up to the next break or the end of the note, so folding one region never hides
+another. Content written before the first break has no divider of its own and is
+always visible.
+
+Every thematic break the parser recognizes behaves the same way, whether it is
+written as `---`, `***`, `___`, or a spaced variant. Recognition comes from the
+parsed document rather than from matching lines of text, so a rule inside a
+fenced or indented code block stays code, and a line of dashes under a line of
+text stays the setext heading Markdown says it is.
+
+Folding is presentation only:
+
+- The stored Markdown is never rewritten, and no marker is added to it.
+- The editor always shows the complete source, including every break.
+- Collapsing does not change the note's edit time and records no version.
+- Copy, share, and file export always use the whole body.
+- Search reads the stored body, so collapsed text still matches.
+
+Collapsed state lasts as long as the note stays open. Nothing is persisted, and
+every region starts expanded when a note is opened again. Two breaks in a row,
+or a break ending a note, leave a region with nothing in it, which renders as a
+plain divider with no control rather than an empty thing to fold.
+
 ## List previews
 
 Rows show a compact plain-text preview with Markdown syntax removed. Only the

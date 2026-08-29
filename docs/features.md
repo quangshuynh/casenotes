@@ -23,6 +23,22 @@ text sizes a row unstacks into plain lines so nothing is truncated.
 ![All Notes showing a pinned note above a more recently edited one, a note
 marked as carrying a drawing, folder names, and an event date](screenshots/notes-dark.png){ width="300" }
 
+## Collapsible sections
+
+Read mode treats a Markdown thematic break as a divider that can fold the
+content below it. Each divider owns the content up to the next divider, so
+collapsing one leaves the rest of the note alone, and anything written above the
+first divider always stays visible.
+
+Collapsing changes what is on screen and nothing else. The stored Markdown is
+untouched, the editor still shows every character including the breaks, the
+note's edit time does not move, no version is recorded, and copying, sharing, or
+exporting still carries the whole note. Sections start expanded every time a
+note is opened, and the collapsed state is not saved.
+
+See [Content and Export](content-and-export.md) for which Markdown counts as a
+break.
+
 ## Version history
 
 Saving a change to an existing note keeps the version it replaces. Version

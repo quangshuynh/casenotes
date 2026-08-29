@@ -15,6 +15,9 @@ explicitly addresses them:
   same unencrypted store as the notes, is not tamper evident, and is not
   pruned, so a heavily edited note keeps every previous version.
 - Previous versions can be read and restored but not compared side by side.
+- Collapsing a section is read-mode state only. It is not saved, so every
+  section is expanded again the next time a note is opened, and folding is
+  driven by thematic breaks rather than by headings or nesting.
 - Folders are flat, and each note belongs to at most one folder.
 - iPad uses single-column navigation rather than a persistent folder sidebar.
 - Search uses localized case-insensitive substring matching without ranking or

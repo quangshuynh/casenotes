@@ -71,7 +71,8 @@ enum Theme {
     /// as a row moving to the top of a list, not to decorate it. Callers pass
     /// `nil` instead when Reduce Motion is on.
     enum Motion {
-        /// Rows arriving, leaving, or changing position.
+        /// Content arriving, leaving, or changing position, including a
+        /// folded region of a note going away.
         static let reorder = Animation.easeInOut(duration: 0.22)
 
         /// Revealing the app after it unlocks.

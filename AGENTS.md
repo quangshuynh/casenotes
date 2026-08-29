@@ -94,6 +94,24 @@ and keep cards for the editor, where a distinct surface is the point.
 - Add a UI test only when a unit test genuinely cannot give the same confidence.
 - Never add a bypass of the app lock to make testing easier.
 
+## Markdown folding invariants
+
+Read mode folds a note at its thematic breaks. These are behavior:
+
+- Folding is read-mode presentation. Stored Markdown is never rewritten, no
+  marker is injected, and no fold state is persisted.
+- A break owns the content after it until the next break or the end of the note.
+  Content before the first break is always visible and has no control.
+- Boundaries come from the parsed `.thematicBreak` blocks, never from matching
+  lines of source text. A rule inside fenced or indented code is code, and
+  `Heading` over dashes is a setext heading.
+- Every spelling the parser accepts as a break folds alike.
+- Collapsing must not touch `updatedAt`, write a `NoteRevision`, or reach the
+  model at all.
+- The editor always exposes the complete source, so native selection and Select
+  All keep covering the whole note.
+- Copy, share, and export always use the full body.
+
 ## Version history invariants
 
 Notes keep previous authored states as `NoteRevision` records. These rules are
