@@ -18,6 +18,19 @@ rather than being hidden in place, so VoiceOver reads only what is on screen.
 The written hint beside a collapsed divider is dropped at accessibility text
 sizes, where it would truncate; the button keeps its label and value.
 
+Every action in the note's More Actions menu is a labelled word rather than a
+bare symbol, including the two file exports, so the difference between exporting
+Markdown and exporting a PDF is spoken rather than inferred from an icon.
+
+An exported PDF keeps the note's text as text rather than flattening the page
+into one image, which is what lets a reader select it, search it, and print it
+at full quality. What a PDF reader then does with that text is the reader's
+behavior rather than something CaseNotes controls, and the app makes no claim
+about tagged-PDF structure or reading order. The document uses fixed type sizes
+so it paginates the same way for everyone, which means the reader's Dynamic Type
+setting deliberately does not change the file; zooming is done in whatever opens
+it. An included drawing is an image with no alternative text.
+
 Motion-sensitive transitions read the system Reduce Motion setting and disable
 their animations when requested. Folding a section is one of them. The app-switcher privacy cover is independent
 of those transitions and always appears immediately without animation.

@@ -31,15 +31,17 @@ analytics, or cloud services.
   current version
 - Folders that keep notes safely in Unfiled when deleted
 - One optional PencilKit drawing per note
-- Copy, share, and Markdown file export
+- Copy, share, Markdown file export, and PDF export of the rendered note
+  including its drawing
 - LocalAuthentication app lock and an immediate app-switcher privacy shield
 - Dynamic Type, VoiceOver labels, and Reduce Motion support
 
 ## Technology
 
 SwiftUI provides the interface, SwiftData persists notes and folders, and
-PencilKit, LocalAuthentication, CoreTransferable, and Foundation cover the
-platform integrations. The project has no third-party runtime dependencies.
+PencilKit, LocalAuthentication, CoreTransferable, Core Text, UIKit, and
+Foundation cover the platform integrations. The project has no third-party
+runtime dependencies.
 
 ## Quick start
 
@@ -67,7 +69,8 @@ CaseNotes implements its intended core scope and has not been submitted to the
 App Store. Notes remain on one device unless included in that device's backups.
 There is no sync or import, folders do not nest, drawings are not embedded in
 Markdown exports, and version history covers note text rather than drawings.
-The app lock gates the interface but does not encrypt the SwiftData store. See
+Exported files are not encrypted, and the app lock gates the interface but does
+not encrypt the SwiftData store. See
 [limitations](https://quangshuynh.github.io/casenotes/limitations/) for the
 complete list.
 

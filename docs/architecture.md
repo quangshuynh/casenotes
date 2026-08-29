@@ -47,6 +47,8 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 - `ListDateStyle` decides how much of a date a compact row spells out, and
   formats it for an injected calendar and locale.
 - `NoteExport` defines the exact text and file representation leaving the app.
+- `NotePDFRenderer` lays a note out as a paginated PDF document, working from a
+  value copy of the note's authored content rather than from any view.
 - `AppLockController` owns authentication and scene lifecycle policy behind a
   `DeviceAuthenticator` protocol.
 
@@ -66,3 +68,23 @@ date only, so opening the app parses nothing.
 Drawing bytes use external SwiftData storage and are read only when the drawing
 view or editor opens. Rasterization is keyed to the drawing edit timestamp so
 unrelated view updates do not rebuild the image.
+
+## PDF generation
+
+`NotePDFRenderer` builds a PDF with `UIGraphicsPDFRenderer` and typesets it with
+Core Text, both first-party. Core Text lays each block into whatever height is
+left on the page, reports how much of the block fitted, and the remainder
+continues on the next page, which is how a long paragraph, list, or code block
+crosses a boundary without losing a line at the seam. Text is drawn as text, so
+a reader can select and search it; only a PencilKit drawing is rasterized.
+
+Rendering never reads the reading view. It takes a `NotePDFRenderer.Content`
+value holding the title, the optional event date, the body, and the drawing
+bytes, and it parses the body with the same `MarkdownDocument` read mode uses.
+Section folding lives in view state and has no route into the exporter.
+
+Generation happens inside the share item's transfer representation, so it runs
+when a destination is chosen rather than while the actions menu is on screen.
+It runs on the main actor, because rasterizing a PencilKit drawing is not
+documented as safe anywhere else and an export is one document on an explicit
+user action.

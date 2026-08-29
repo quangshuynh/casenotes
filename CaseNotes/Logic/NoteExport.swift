@@ -29,9 +29,10 @@ extension UTType {
 /// edit timestamps or pinned state, is deliberately left out, since it is app
 /// state rather than note content.
 ///
-/// Drawings are not exported. A Markdown document cannot carry one without a
-/// companion image file, so a note holding a sketch says so in one line rather
-/// than losing it without a word.
+/// Drawings do not travel in Markdown. A Markdown document cannot carry one
+/// without a companion image file, so a note holding a sketch says so in one
+/// line rather than losing it without a word. A PDF is a rendered document and
+/// does carry the drawing; see ``NotePDFRenderer``.
 ///
 /// Formatting is pure and deterministic so it can be asserted on in tests.
 enum NoteExport {
@@ -104,6 +105,18 @@ enum NoteExport {
         "\(fileBaseName(for: note)).md"
     }
 
+    /// The file name to suggest when exporting a note as a PDF.
+    ///
+    /// Shares ``fileBaseName(for:)`` with the Markdown export on purpose. There
+    /// is one policy for turning a note title into a file name, so the two
+    /// exports of one note differ only by extension.
+    ///
+    /// - Parameter note: The note being exported.
+    /// - Returns: A `.pdf` file name safe for the file system and for sharing.
+    static func suggestedPDFFileName(for note: Note) -> String {
+        "\(fileBaseName(for: note)).pdf"
+    }
+
     /// The file name without its extension.
     ///
     /// Characters that are unsafe in a path become separators rather than being
@@ -161,6 +174,54 @@ struct MarkdownNoteFile: Transferable, Sendable {
     nonisolated static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .noteMarkdown) { file in
             Data(file.markdown.utf8)
+        }
+        .suggestedFileName { $0.fileName }
+    }
+}
+
+/// A note packaged as a PDF file for the share sheet.
+///
+/// The document itself is not built here. Construction captures the note's
+/// authored content, which is cheap, and rendering happens inside the transfer
+/// representation, which runs only once the user has chosen where the file is
+/// going. Nothing about opening a note or opening the actions menu pays for a
+/// PDF that may never be exported.
+struct PDFNoteFile: Transferable, Sendable {
+    let fileName: String
+    let content: NotePDFRenderer.Content
+
+    private let locale: Locale
+    private let timeZone: TimeZone
+
+    /// - Parameters:
+    ///   - note: The note to package.
+    ///   - locale: Locale used to format the event date.
+    ///   - timeZone: Time zone used to format the event date.
+    init(
+        note: Note,
+        locale: Locale = .autoupdatingCurrent,
+        timeZone: TimeZone = .autoupdatingCurrent
+    ) {
+        fileName = NoteExport.suggestedPDFFileName(for: note)
+        content = NotePDFRenderer.Content(note: note)
+        self.locale = locale
+        self.timeZone = timeZone
+    }
+
+    /// Renders the document.
+    ///
+    /// Hops to the main actor because rasterizing a PencilKit drawing is not
+    /// documented as safe anywhere else, and a share export is a single
+    /// user-triggered document rather than a background workload.
+    ///
+    /// - Returns: The complete PDF file.
+    func pdfData() async -> Data {
+        await NotePDFRenderer.pdfData(for: content, locale: locale, timeZone: timeZone)
+    }
+
+    nonisolated static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .pdf) { file in
+            await file.pdfData()
         }
         .suggestedFileName { $0.fileName }
     }

@@ -96,6 +96,30 @@ Read mode folds sections at thematic breaks. Constraints when touching it:
 - Leave the editor alone. The full source stays visible and natively selectable,
   which rules out building folding into the editable text control.
 
+## PDF export
+
+`NotePDFRenderer` in `Logic/` builds the document; views trigger an export and
+own no layout. Constraints when touching it:
+
+- Never render a view into an image and call it a PDF. Text is typeset with
+  Core Text so it stays selectable and searchable; only the drawing is a raster.
+- Reuse the existing parse. Blocks come from `MarkdownDocument`, so a break is
+  an ordinary rule and no collapsed-state type is shared with the renderer.
+- The exporter's input is a `Content` value. Do not give it a view, a
+  `ModelContext`, or anything a reading view holds.
+- First-party frameworks only: UIKit, Core Text, PencilKit, Foundation.
+- A PDF includes the note's current drawing. Version history semantics are
+  unchanged and still exclude drawings.
+- No schema change, and nothing generated is persisted.
+- Filenames come from `NoteExport.fileBaseName(for:)`. Do not add a second
+  sanitization policy.
+- Page geometry and the print palette are local to the renderer. Do not push
+  paper measurements or print-only colors into `Theme`.
+- Two Core Text facts here were measured with probes, not assumed, and are
+  recorded in CONTEXT.md. Verify by rendering a page to an image before
+  believing a layout change is correct; the text-extraction tests pass happily
+  on a badly spaced page.
+
 ## Version history
 
 Revisions record authored text only: title, body, and event date. Keep the

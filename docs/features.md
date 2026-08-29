@@ -101,7 +101,27 @@ same while it is drawn and while it is read.
   the user did not write.
 - Share Note sends Markdown text through the system share sheet.
 - Export Markdown File creates a `.md` document through `Transferable`.
+- Export PDF File creates a `.pdf` document through the same mechanism.
 
 Exports include the title, optional event date, and body. App bookkeeping such
-as creation time, edit time, and pinned state is omitted. A text line indicates
-that a drawing exists because the drawing itself is not embedded.
+as creation time, edit time, and pinned state is omitted.
+
+Markdown and PDF answer different needs. Markdown hands over the source the note
+is stored as, keeps its syntax intact, and can be edited again in any editor. It
+notes in one line that a drawing exists, because a Markdown file cannot carry
+one. PDF hands over the note as a document: the Markdown is rendered rather than
+shown as syntax, the note's current drawing is included, and long notes paginate
+onto US Letter pages. Text in the PDF stays text, so it can be selected,
+searched, and printed.
+
+A PDF always contains the complete note. Collapsing a section is something the
+reading view does, so what is folded on screen when the export runs makes no
+difference to the file, and a thematic break appears in the document as an
+ordinary rule rather than as a control.
+
+The PDF is a light document in both app appearances, so a note exported while
+the app is in dark mode still arrives readable and ready to print.
+
+Once a file has been shared or saved it belongs to wherever it was sent.
+CaseNotes has no control over it after that, and the file is not encrypted or
+password protected.

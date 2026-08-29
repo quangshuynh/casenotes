@@ -112,6 +112,30 @@ Read mode folds a note at its thematic breaks. These are behavior:
   All keep covering the whole note.
 - Copy, share, and export always use the full body.
 
+## Export invariants
+
+A note leaves the app as authored content and nothing else. These hold for both
+export formats:
+
+- Markdown export is the source. PDF export is presentation. Neither replaces
+  the other, and the PDF never shows raw Markdown syntax.
+- A PDF carries the complete note body. Read-mode collapse state is view state
+  and has no route into an exporter, so folding never changes a file.
+- Title, event date, and body are exported. Timestamps, pinned state, folder,
+  and version history are not.
+- A PDF includes the note's current drawing. That does not change version
+  history, which still records authored text only.
+- A drawing that is empty or whose bytes no longer decode is omitted, and the
+  note's text still exports. Corrupt drawing data must never block an export.
+- Never rasterize a note into a PDF. The page is typeset so its text stays
+  selectable, searchable, and printable; only the drawing is an image.
+- Generated PDFs are not persisted. No SwiftData model, no export history, and
+  no cached file in the note store.
+- Filenames come from `NoteExport.fileBaseName(for:)`. There is one
+  sanitization policy, and formats differ only by extension.
+- Exported files are not encrypted or password protected, and documentation must
+  not imply otherwise.
+
 ## Version history invariants
 
 Notes keep previous authored states as `NoteRevision` records. These rules are

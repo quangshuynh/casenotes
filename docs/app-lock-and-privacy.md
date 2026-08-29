@@ -37,3 +37,17 @@ has not undergone a security review and does not claim production security.
 Data stays in the app container and may be included in normal device backups.
 The application itself contains no networking, accounts, sync, analytics,
 telemetry, advertising, or cloud service.
+
+## Exported files
+
+Copying, sharing, and exporting a note as Markdown or as a PDF are explicit user
+actions that move authored content out of the app. Exports carry the title, the
+event date, and the body, and a PDF also carries the note's current drawing.
+Creation and edit timestamps, folder membership, pinned state, and version
+history are not included.
+
+An exported file is an ordinary document. It is not encrypted or password
+protected, the app lock does not apply to it, and once it has been shared or
+saved it is controlled by whatever destination the user chose rather than by
+CaseNotes. Generation happens on the device, and nothing is uploaded: the file
+is handed to the system share sheet, which is what decides where it goes.
