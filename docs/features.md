@@ -98,8 +98,9 @@ the deleted folder's own parent, or to the top level when it had none. Anything
 deeper stays exactly where it is. The confirmation states both outcomes before
 anything happens.
 
-![Folder list showing the All Notes and Unfiled scopes above three folders, each
-with a note count](screenshots/library-dark.png){ width="300" }
+![Library showing the All Notes and Unfiled scopes, two top level folders with
+their note counts and one of them naming its subfolders, and a Recent
+section](screenshots/library-dark.png){ width="300" }
 
 ## Drawing
 

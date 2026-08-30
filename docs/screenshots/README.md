@@ -5,10 +5,10 @@ application running in the iOS Simulator with synthetic note content.
 
 | File | Screen | Referenced from |
 | --- | --- | --- |
-| `library-dark.png` | Folder list with scope counts | [Features](../features.md) |
+| `library-dark.png` | Library scopes, folders, and recent notes | [Features](../features.md) |
 | `notes-dark.png` | All Notes, pinned note first | README, [Features](../features.md) |
 | `note-markdown-dark.png` | Reading view with rendered Markdown | [Content and Export](../content-and-export.md) |
-| `note-editor-dark.png` | Draft editor with event date and folder picker | [Architecture](../architecture.md) |
+| `note-editor-dark.png` | Draft editor showing Markdown source and the folder picker | [Architecture](../architecture.md) |
 | `drawing-dark.png` | PencilKit canvas with the system tool picker | [Features](../features.md) |
 
 The `-dark` suffix records the app appearance. The drawing canvas is
@@ -35,7 +35,8 @@ then fix the appearance and status bar so a recapture matches the existing set:
 xcrun simctl ui booted appearance dark
 xcrun simctl status_bar booted override --time 9:41 \
   --batteryState charged --batteryLevel 100 \
-  --dataNetwork wifi --wifiMode active --wifiBars 3
+  --dataNetwork wifi --wifiMode active --wifiBars 3 \
+  --cellularMode active --cellularBars 4
 ```
 
 The app lock stands in front of every screen. On a simulator, enroll and match
