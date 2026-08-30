@@ -139,7 +139,7 @@ struct NoteRowView: View {
                             .lineLimit(1)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("In folder \(folderName)")
+                    .accessibilityLabel(spokenFolder ?? "In folder \(folderName)")
                 }
             }
             .font(.caption)
@@ -154,12 +154,29 @@ struct NoteRowView: View {
     }
 
     /// The folder to name on the row, when the list is showing more than one.
+    ///
+    /// The folder's own name rather than its path. A row is compact and a deep
+    /// path would crowd out the preview beside it, so the location is spoken in
+    /// full instead, where length costs nothing.
     private var folderName: String? {
         guard showsFolder else {
             return nil
         }
 
         return note.folder?.displayName
+    }
+
+    /// Where the note is filed, said in full including the folders above it.
+    private var spokenFolder: String? {
+        guard showsFolder, let folder = note.folder else {
+            return nil
+        }
+
+        guard let location = FolderHierarchy.spokenLocation(of: folder) else {
+            return "In folder \(folder.displayName)"
+        }
+
+        return "In folder \(folder.displayName), \(location)"
     }
 
     /// The one date the row shows.

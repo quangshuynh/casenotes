@@ -76,8 +76,9 @@ and keep cards for the editor, where a distinct surface is the point.
 - Density never costs a target. Rows keep the stated minimum height, symbol
   columns scale with `@ScaledMetric`, and any row that pairs a title with a
   trailing date unstacks at accessibility text sizes.
-- Folder rows must not imply hierarchy. Folders are flat, so nothing in the
-  interface may indent or nest them until nested folders actually exist.
+- Folder rows carry hierarchy through navigation, not through an expanded tree.
+  A screen lists one level, and indentation appears only in a destination
+  picker, where a written path states the same structure beside it.
 - Note creation goes through `NoteDraft.insertNote(into:at:)` wherever it is
   offered, which is what keeps a new note's first save out of version history.
 - Visual work must not change Save and Cancel, authored timestamps, or version
@@ -93,6 +94,34 @@ and keep cards for the editor, where a distinct surface is the point.
   own. Formatted output must not vary by region.
 - Add a UI test only when a unit test genuinely cannot give the same confidence.
 - Never add a bypass of the app lock to make testing easier.
+
+## Folder hierarchy invariants
+
+Folders form a tree, and organizing notes never edits them:
+
+- Folders are a cycle-free parent and child tree. A root folder has a `nil`
+  parent, and the library is the conceptual root: no stored record stands in
+  for it.
+- SwiftData will persist a self-referential graph that is not a tree, so the
+  invariant lives in `FolderHierarchy`. Every move goes through it, a move into
+  the folder itself or into its own subtree is refused, and hiding a
+  destination in the interface is never the safeguard. Traversal keeps a visited
+  guard so it terminates on malformed data.
+- Deleting a folder deletes nothing else. Its direct notes become Unfiled, its
+  direct children move into its own parent, and anything deeper is untouched.
+  Never cascade notes or descendant folders.
+- A note belongs to exactly one folder or to none, at any depth. Unfiled means
+  `folder == nil` and nesting does not change that. All Notes stays global.
+- Hierarchy is derived, never stored as a path string. Display paths are built
+  by walking parents, so a rename or a move needs no rewrite beneath it.
+- Counts and browsing are direct membership. A folder row counts the notes
+  filed in that folder, which is the same set opening it shows.
+- Hierarchy changes are organization: moving, renaming, creating, or deleting a
+  folder must never touch a note's authored content, `updatedAt`, or version
+  history.
+- A schema change to `Folder` needs a migration test written through a genuinely
+  frozen prior schema. `CaseNotesTests/PreNestedFolderSchema.swift` is frozen at
+  the flat-folder models and must not gain properties.
 
 ## Markdown folding invariants
 

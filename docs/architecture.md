@@ -40,6 +40,11 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 ## Logic boundaries
 
 - `NoteOrganizer` owns scope filtering, search, pinning, and sorting.
+- `FolderHierarchy` owns the folder tree: ancestor and descendant traversal,
+  display paths, which moves are legal, and what deleting a folder does to the
+  folders and notes inside it. `FolderTree` beside it groups a fetched set of
+  folders by parent in one pass, which is what browsing screens and destination
+  pickers read instead of walking relationships per row.
 - `NoteHistory` owns version history: when a previous version is kept, the
   order history reads in, and what restoring one does.
 - `MarkdownDocument` converts Markdown source into renderable blocks, and
@@ -54,11 +59,16 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 
 ## Rendering work
 
+Folder hierarchy is derived rather than stored. A location is built by walking
+the parent chain when it is displayed, so renaming or moving a folder needs no
+rewrite of anything beneath it and no path string can go stale.
+
 Markdown parsing is retained in `MarkdownText` state and refreshed only when
 the source changes. Section division happens once with the parse rather than on
 demand, so folding a section costs a redraw and no reparsing. List previews
 parse only an opening fragment instead of an entire long note. Folder scope
-counts are accumulated in one pass.
+counts are accumulated in one pass, as is the grouping of folders by parent, so
+a screen showing folders issues no fetch per row and counts no descendants.
 
 The version history list uses the same plain-text preview strategy as the notes
 list, so showing a long history parses no Markdown. A historical body is parsed

@@ -11,8 +11,11 @@ Editing uses an in-memory draft. Save applies the draft, while Cancel discards
 it. Authored content changes update `updatedAt`; opening, closing, or moving a
 note between folders does not.
 
-The list supports title and body substring search, Last Updated and Date
-Created ordering, and pinned-first grouping within either order. A strip above
+The list supports title and body substring search over the notes of the scope
+being browsed, Last Updated and Date Created ordering, and pinned-first grouping
+within either order. Searching inside a folder covers the notes filed in that
+folder rather than reaching into its subfolders, and the subfolders are left out
+of the results while a search is active. A strip above
 the list states how many notes are showing and which ordering is active, and
 opens the ordering menu in one tap.
 
@@ -66,17 +69,34 @@ edited most recently so current work is one tap away.
 
 Creation is available without leaving the screen: the toolbar offers New Note
 and New Folder, the Folders heading carries its own folder action, and a
-folder's context menu can start a note already filed in it. Creating a note
-while browsing a folder or an empty folder files it there.
+folder's context menu can start a note or a folder already inside it. Creating
+while browsing a folder puts the new note or folder in that exact folder, at
+whatever depth it sits.
 
 ## Folders
 
-Folders can be created, renamed, and deleted. All Notes and Unfiled are explicit
-browsing scopes. A note belongs to at most one folder. Folders do not nest.
+Folders can be created, renamed, moved, and deleted. All Notes and Unfiled are
+explicit browsing scopes. A note belongs to at most one folder, or to none.
 
-Deleting a folder does not delete its notes. SwiftData nullifies the
-relationship, and the confirmation explains that affected notes move to
-Unfiled.
+Folders can hold folders. A folder with no parent sits at the top level of the
+library, and opening a folder shows the folders inside it above the notes filed
+in it. Membership is direct at every level: a note filed in a subfolder belongs
+to that subfolder, so the count on a row and the contents of the screen it opens
+are always the same set. All Notes stays global and includes notes at any depth,
+and Unfiled still means a note with no folder at all.
+
+Move Folder offers the library root and every folder except the one being moved
+and the folders inside it, so a folder can never be filed into itself or into
+its own subtree. Moving a folder takes its subfolders and notes along, and
+changes no note: not its text, not its edit time, and not its history. Renaming
+a folder likewise changes only that folder, and the paths shown for everything
+inside it follow automatically.
+
+Deleting a folder deletes no writing and no subtree. The notes filed directly in
+it move to Unfiled, and the folders directly inside it move up one level, into
+the deleted folder's own parent, or to the top level when it had none. Anything
+deeper stays exactly where it is. The confirmation states both outcomes before
+anything happens.
 
 ![Folder list showing the All Notes and Unfiled scopes above three folders, each
 with a note count](screenshots/library-dark.png){ width="300" }

@@ -72,8 +72,8 @@ palette already in the asset catalog, reached through `Theme`.
   look the same.
 - Extend the existing semantic tokens before adding new ones, and never restate
   a color in a view.
-- Visuals must not imply persistence the model does not have. Folders are flat,
-  so no indentation, disclosure triangles, or trees.
+- Visuals must not imply persistence the model does not have. Folders nest, so
+  a folder screen lists one level and pushes; no inline expanded tree.
 - A redesign is not a licence to add persisted state. No `@Model` change and no
   new stored setting belongs in a visual slice.
 - Screenshot the result in Simulator. Two defects in this pass were only visible
@@ -81,6 +81,25 @@ palette already in the asset catalog, reached through `Theme`.
   symbol column overlapping its label at accessibility text sizes.
 - After a UI change, check `docs/`, the README, and the screenshots before
   calling it done.
+
+## Nested folders
+
+Folders are a real persisted tree. Constraints when touching them:
+
+- Validate moves in `FolderHierarchy`, never only by what the picker offers. A
+  folder may not move into itself or into its own subtree.
+- Deleting a folder promotes its direct children to its parent and unfiles its
+  direct notes. Never cascade notes or descendant folders.
+- Counts and folder screens are direct membership only. Do not aggregate
+  descendants without saying so in the interface and the docs.
+- Group folders once per screen with `FolderTree`. No per-row relationship walk
+  and no fetch per row.
+- No persisted path strings. Build a location from the parent chain.
+- Hierarchy work never writes a `NoteRevision` or moves `updatedAt`, and never
+  changes draft, history, or export semantics.
+- A `Folder` schema change extends the frozen `PreNestedFolderSchema` approach
+  rather than reusing current models for the fixture.
+- No drag and drop and no manual ordering in this slice.
 
 ## Markdown folding
 

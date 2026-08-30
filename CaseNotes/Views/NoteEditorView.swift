@@ -115,12 +115,14 @@ struct NoteEditorView: View {
                 Picker("Folder", selection: $draft.folder) {
                     Text("Unfiled").tag(Folder?.none)
 
-                    ForEach(folders) { folder in
-                        Text(folder.displayName).tag(Folder?.some(folder))
+                    ForEach(destinations) { destination in
+                        Text(destination.pathText)
+                            .tag(Folder?.some(destination.folder))
+                            .accessibilityLabel(destination.spokenDescription)
                     }
                 }
             } footer: {
-                Text("Filing a note does not change when it was last edited.")
+                Text("A note can be filed in a folder at any depth. Filing it does not change when it was last edited.")
             }
             .listRowBackground(Theme.Colors.surface)
         }
@@ -162,6 +164,15 @@ struct NoteEditorView: View {
                 focusedField = .title
             }
         }
+    }
+
+    /// The folders offered by the filing picker, in tree order.
+    ///
+    /// A picker row is one line, so nesting is carried by the destination's
+    /// path rather than by indentation the control would not honor. Two folders
+    /// sharing a name are told apart by where they sit.
+    private var destinations: [FolderDestination] {
+        FolderTree(folders).destinations()
     }
 
     /// Whether the draft differs from the contents the editor opened with.

@@ -17,7 +17,7 @@ dependency.
 - Create, read, edit, pin, search, sort, and delete notes
 - Browse a library of scopes, folders, and recently edited notes
 - Create a note or a folder without leaving the library
-- Organize notes into flat folders or leave them Unfiled
+- Organize notes into nested folders or leave them Unfiled
 - Render Markdown in a dedicated reading view
 - Read and restore previous versions of a note
 - Attach one PencilKit drawing to a note
@@ -52,8 +52,7 @@ through a security review. The [limitations](limitations.md) page records what
 the app intentionally does not support.
 
 The app lock is an interface gate, not encryption of the SwiftData store. Sync,
-import, nested folders, drawing-inclusive export, and version comparison are not
-implemented.
+import, Markdown export of drawings, and version comparison are not implemented.
 
 ## License
 

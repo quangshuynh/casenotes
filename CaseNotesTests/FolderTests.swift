@@ -158,4 +158,188 @@ struct FolderTests {
         #expect(Folder(name: "   ").displayName == "Untitled Folder")
         #expect(Folder(name: "Inbox").displayName == "Inbox")
     }
+
+    // MARK: Nesting
+
+    @Test
+    func aFolderWithoutAParentIsARootFolder() {
+        let folder = Folder(name: "Work")
+
+        #expect(folder.parent == nil)
+        #expect(folder.isRoot)
+        #expect(folder.children.isEmpty)
+    }
+
+    /// The self-relation is declared on one side and read from both, so filing
+    /// a folder inside another is enough to make it appear as a child.
+    @Test
+    func filingAFolderPopulatesBothSidesOfTheRelationship() throws {
+        let context = try makeContext()
+        let work = Folder(name: "Work")
+        let alpha = Folder(name: "Project Alpha")
+        context.insert(work)
+        context.insert(alpha)
+        alpha.parent = work
+        try context.save()
+
+        #expect(alpha.parent?.name == "Work")
+        #expect(alpha.isRoot == false)
+        #expect(work.children.map(\.name) == ["Project Alpha"])
+        #expect(work.isRoot)
+    }
+
+    @Test
+    func aFolderCanBeCreatedInsideAnotherInOneStep() throws {
+        let context = try makeContext()
+        let work = Folder(name: "Work")
+        context.insert(work)
+
+        let alpha = Folder(name: "Project Alpha", parent: work)
+        context.insert(alpha)
+        try context.save()
+
+        #expect(work.children.map(\.name) == ["Project Alpha"])
+    }
+
+    /// A tree written to a file comes back as the same tree, which is the
+    /// claim the store itself has to support rather than the object graph.
+    @Test
+    func aFolderTreeSurvivesSavingAndReopening() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-hierarchy-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        do {
+            let container = try ModelContainer(
+                for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+                configurations: ModelConfiguration(url: url)
+            )
+            let context = ModelContext(container)
+
+            let work = Folder(name: "Work")
+            let alpha = Folder(name: "Project Alpha", parent: work)
+            let research = Folder(name: "Research", parent: alpha)
+            context.insert(work)
+            context.insert(alpha)
+            context.insert(research)
+            context.insert(Note(title: "Interview", folder: research))
+            try context.save()
+        }
+
+        let container = try ModelContainer(
+            for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+            configurations: ModelConfiguration(url: url)
+        )
+        let context = ModelContext(container)
+        let folders = try context.fetch(
+            FetchDescriptor<Folder>(sortBy: [SortDescriptor(\.name)])
+        )
+
+        #expect(folders.map(\.name) == ["Project Alpha", "Research", "Work"])
+
+        let research = try #require(folders.first { $0.name == "Research" })
+        let work = try #require(folders.first { $0.name == "Work" })
+
+        #expect(FolderHierarchy.pathComponents(of: research) == ["Work", "Project Alpha", "Research"])
+        #expect(work.isRoot)
+        #expect(work.children.map(\.name) == ["Project Alpha"])
+        #expect(research.notes.map(\.title) == ["Interview"])
+    }
+
+    @Test
+    func movingAFolderBetweenParentsPersists() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-move-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let configuration = ModelConfiguration(url: url)
+
+        do {
+            let container = try ModelContainer(
+                for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+                configurations: configuration
+            )
+            let context = ModelContext(container)
+
+            let work = Folder(name: "Work")
+            let personal = Folder(name: "Personal")
+            let journal = Folder(name: "Journal", parent: work)
+            context.insert(work)
+            context.insert(personal)
+            context.insert(journal)
+            try context.save()
+
+            FolderHierarchy.move(journal, to: personal)
+            try context.save()
+        }
+
+        let container = try ModelContainer(
+            for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+            configurations: configuration
+        )
+        let context = ModelContext(container)
+        let folders = try context.fetch(FetchDescriptor<Folder>())
+        let journal = try #require(folders.first { $0.name == "Journal" })
+
+        #expect(journal.parent?.name == "Personal")
+    }
+
+    @Test
+    func movingAFolderBackToRootPersists() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-root-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let configuration = ModelConfiguration(url: url)
+
+        do {
+            let container = try ModelContainer(
+                for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+                configurations: configuration
+            )
+            let context = ModelContext(container)
+
+            let work = Folder(name: "Work")
+            let journal = Folder(name: "Journal", parent: work)
+            context.insert(work)
+            context.insert(journal)
+            try context.save()
+
+            FolderHierarchy.move(journal, to: nil)
+            try context.save()
+        }
+
+        let container = try ModelContainer(
+            for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+            configurations: configuration
+        )
+        let context = ModelContext(container)
+        let folders = try context.fetch(FetchDescriptor<Folder>())
+        let journal = try #require(folders.first { $0.name == "Journal" })
+        let work = try #require(folders.first { $0.name == "Work" })
+
+        #expect(journal.isRoot)
+        #expect(work.children.isEmpty)
+    }
+
+    /// Deleting a folder must not take its subfolders with it even when the
+    /// promotion step is skipped, so the relationship's own rule is checked
+    /// rather than assumed.
+    @Test
+    func theChildRelationshipNullifiesRatherThanCascades() throws {
+        let context = try makeContext()
+        let work = Folder(name: "Work")
+        let alpha = Folder(name: "Project Alpha", parent: work)
+        context.insert(work)
+        context.insert(alpha)
+        try context.save()
+
+        context.delete(work)
+        try context.save()
+
+        let folders = try context.fetch(FetchDescriptor<Folder>())
+
+        #expect(folders.map(\.name) == ["Project Alpha"])
+        #expect(alpha.parent == nil)
+    }
 }
