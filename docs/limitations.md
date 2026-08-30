@@ -26,13 +26,19 @@ explicitly addresses them:
 - Collapsing a section is read-mode state only. It is not saved, so every
   section is expanded again the next time a note is opened, and folding is
   driven by thematic breaks rather than by headings or nesting.
-- Folders are flat, and each note belongs to at most one folder.
+- Folders nest, but there is no drag and drop and no manual ordering. Folders
+  are shown in name order, and a folder is moved through an explicit
+  destination picker.
+- A folder row counts the notes filed directly in it rather than everything
+  beneath it, and browsing or searching a folder shows those same direct notes
+  rather than reaching into its subfolders.
+- Each note belongs to at most one folder, or to none.
 - iPad uses single-column navigation rather than a persistent folder sidebar.
 - Search uses localized case-insensitive substring matching without ranking or
   tokenization.
 - The project has not been submitted to the App Store or through a security
   review.
 
-Possible future work includes an iPad sidebar, Markdown import, richer
-organization, and comparing two versions of a note. These are ideas, not
+Possible future work includes an iPad folder sidebar, Markdown import, folder
+ordering and drag and drop, and comparing two versions of a note. These are ideas, not
 implemented features or commitments.

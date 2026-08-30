@@ -196,4 +196,148 @@ struct NoteTests {
         let revisions = try context.fetch(FetchDescriptor<NoteRevision>())
         #expect(revisions.isEmpty)
     }
+
+    /// Nested folders changed an existing entity rather than adding one: a
+    /// folder gained a parent and a children relationship. That is still an
+    /// additive change SwiftData migrates automatically, and this proves it
+    /// against a store that genuinely predates the self-relation.
+    ///
+    /// The older store is written through ``PreNestedFolderSchema``, whose
+    /// `Folder` has no way to sit inside another. Writing it with today's
+    /// `Folder` would produce the new schema and prove nothing.
+    ///
+    /// Everything a user had keeps working: folders survive as root folders,
+    /// filing survives exactly, unfiled notes stay unfiled, and drawings and
+    /// revisions come across untouched.
+    @Test
+    func existingNoteStoresOpenAfterFoldersCanNest() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-nesting-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let writtenAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let createdAt = Date(timeIntervalSince1970: 1_699_000_000)
+        let capturedAt = Date(timeIntervalSince1970: 1_700_000_200)
+        let drawingBytes = Data([0x0A, 0x0B, 0x0C])
+
+        // Write a store using the schema as it stood while folders were flat.
+        do {
+            let container = try ModelContainer(
+                for: Schema(PreNestedFolderSchema.models),
+                configurations: ModelConfiguration(url: url)
+            )
+            let context = ModelContext(container)
+
+            let siteVisits = PreNestedFolderSchema.Folder(name: "Site Visits")
+            let research = PreNestedFolderSchema.Folder(name: "Research")
+            let empty = PreNestedFolderSchema.Folder(name: "Archive")
+            context.insert(siteVisits)
+            context.insert(research)
+            context.insert(empty)
+
+            let filed = PreNestedFolderSchema.Note(
+                title: "North Wing",
+                body: "Walked the north wing.",
+                createdAt: createdAt,
+                updatedAt: writtenAt
+            )
+            let deeper = PreNestedFolderSchema.Note(
+                title: "Reading List",
+                body: "Sources to follow up.",
+                createdAt: createdAt,
+                updatedAt: writtenAt
+            )
+            let loose = PreNestedFolderSchema.Note(
+                title: "Stray Thought",
+                body: "Never filed anywhere.",
+                createdAt: createdAt,
+                updatedAt: writtenAt
+            )
+            context.insert(filed)
+            context.insert(deeper)
+            context.insert(loose)
+            filed.folder = siteVisits
+            deeper.folder = research
+
+            let drawing = PreNestedFolderSchema.NoteDrawing(
+                data: drawingBytes,
+                updatedAt: writtenAt
+            )
+            context.insert(drawing)
+            filed.drawing = drawing
+
+            let revision = PreNestedFolderSchema.NoteRevision(
+                title: "North Wing",
+                body: "An earlier draft.",
+                updatedAt: createdAt,
+                capturedAt: capturedAt
+            )
+            context.insert(revision)
+            revision.note = filed
+
+            try context.save()
+        }
+
+        // Reopen the same file with the model list the app registers.
+        let container = try ModelContainer(
+            for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+            configurations: ModelConfiguration(url: url)
+        )
+        let context = ModelContext(container)
+        let folders = try context.fetch(
+            FetchDescriptor<Folder>(sortBy: [SortDescriptor(\.name)])
+        )
+        let notes = try context.fetch(
+            FetchDescriptor<Note>(sortBy: [SortDescriptor(\.title)])
+        )
+
+        // Every folder that existed survives, and every one of them is a root
+        // folder, because a flat store had nowhere else for them to be.
+        #expect(folders.map(\.name) == ["Archive", "Research", "Site Visits"])
+        #expect(folders.allSatisfy { $0.isRoot })
+        #expect(folders.allSatisfy { $0.parent == nil })
+        #expect(folders.allSatisfy { $0.children.isEmpty })
+
+        // The hierarchy starts out cycle free and reads as a flat top level.
+        for folder in folders {
+            #expect(FolderHierarchy.ancestors(of: folder).isEmpty)
+            #expect(FolderHierarchy.descendants(of: folder).isEmpty)
+            #expect(FolderHierarchy.pathComponents(of: folder) == [folder.displayName])
+        }
+
+        #expect(FolderTree(folders).roots.count == 3)
+
+        // Filing survives exactly as it was.
+        #expect(notes.map(\.title) == ["North Wing", "Reading List", "Stray Thought"])
+
+        let filed = try #require(notes.first { $0.title == "North Wing" })
+        let deeper = try #require(notes.first { $0.title == "Reading List" })
+        let loose = try #require(notes.first { $0.title == "Stray Thought" })
+
+        #expect(filed.folder?.name == "Site Visits")
+        #expect(deeper.folder?.name == "Research")
+        #expect(loose.folder == nil)
+
+        // Authored content and timestamps are untouched by the upgrade.
+        #expect(filed.body == "Walked the north wing.")
+        #expect(filed.createdAt == createdAt)
+        #expect(filed.updatedAt == writtenAt)
+        #expect(loose.updatedAt == writtenAt)
+
+        // Drawings and history come across with the notes that own them.
+        #expect(filed.drawing?.data == drawingBytes)
+        #expect(filed.drawing?.updatedAt == writtenAt)
+
+        let history = NoteHistory.revisions(of: filed)
+        #expect(history.count == 1)
+        #expect(history.first?.body == "An earlier draft.")
+        #expect(history.first?.capturedAt == capturedAt)
+        #expect(deeper.revisions.isEmpty)
+
+        let drawings = try context.fetch(FetchDescriptor<NoteDrawing>())
+        let revisions = try context.fetch(FetchDescriptor<NoteRevision>())
+
+        #expect(drawings.count == 1)
+        #expect(revisions.count == 1)
+    }
 }

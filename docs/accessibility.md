@@ -10,6 +10,17 @@ symbol column beside a row label scales with the text next to it. At
 accessibility text sizes rows that pair a title with a date stop sharing a line
 and stack instead, so readability wins over density.
 
+Hierarchy is never left to indentation alone. A folder row is spoken as one
+phrase naming the folder, how many folders it contains, and how many notes are
+filed in it, so a row that leads somewhere says so rather than relying on a
+filled icon. A destination in a move picker is spoken with the folders it sits
+inside, as in "Research, inside Work, Project Alpha", and the row already
+holding the thing being moved says that it is the current location. The written
+path under an indented destination carries the same structure for anyone reading
+the screen at a text size where indentation has to stop growing. A note names
+its full location on its reading screen, and a compact list row shows the folder
+name while speaking the whole path.
+
 The collapse control on a section divider is a button with a spoken label that
 names the action it performs and a value that states whether the section is
 expanded or collapsed, so the state never depends on reading a chevron. The row

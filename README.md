@@ -10,8 +10,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 CaseNotes is a local-first iOS notes app built with SwiftUI, SwiftData, and
-first-party Apple frameworks. It combines Markdown writing, folders, PencilKit
-sketches, and a device-authentication interface gate without accounts,
+first-party Apple frameworks. It combines Markdown writing, nested folders,
+PencilKit sketches, and a device-authentication interface gate without accounts,
 analytics, or cloud services.
 
 <p align="center">
@@ -29,7 +29,7 @@ analytics, or cloud services.
   and optional event dates
 - Version history that keeps previous text and restores it without losing the
   current version
-- Folders that keep notes safely in Unfiled when deleted
+- Nested folders with safe, note-preserving organization
 - One optional PencilKit drawing per note
 - Copy, share, Markdown file export, and PDF export of the rendered note
   including its drawing
@@ -67,8 +67,9 @@ features, architecture, persistence, privacy, testing, and development details.
 
 CaseNotes implements its intended core scope and has not been submitted to the
 App Store. Notes remain on one device unless included in that device's backups.
-There is no sync or import, folders do not nest, drawings are not embedded in
-Markdown exports, and version history covers note text rather than drawings.
+There is no sync or import, folders have no drag and drop or manual ordering,
+drawings are not embedded in Markdown exports, and version history covers note
+text rather than drawings.
 Exported files are not encrypted, and the app lock gates the interface but does
 not encrypt the SwiftData store. See
 [limitations](https://quangshuynh.github.io/casenotes/limitations/) for the

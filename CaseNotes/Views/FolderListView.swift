@@ -11,12 +11,18 @@ import SwiftUI
 /// The root screen: the workspace navigator every other screen is reached from.
 ///
 /// Three groups answer three different questions. Library holds the scopes that
-/// always exist, Folders holds the ones the user made, and Recent answers what
-/// was being worked on without needing a scope at all.
+/// always exist, Folders holds the top level of the ones the user made, and
+/// Recent answers what was being worked on without needing a scope at all.
 ///
-/// Folder management lives here: creating, renaming, and deleting. Deletion is
-/// confirmed and states plainly that the notes are kept, because that is the one
-/// place a user could reasonably fear losing writing.
+/// Only root folders are listed here. A folder holding folders of its own is
+/// browsed by opening it, which is what keeps the phone screen a navigator
+/// rather than an expanded tree, and what makes the same row vocabulary work at
+/// every depth.
+///
+/// Folder management lives here for the top level and inside each folder for
+/// its children, sharing one set of flows through ``FolderAction``. Deletion is
+/// confirmed and states plainly that the notes and the subfolders are kept,
+/// because that is the one place a user could reasonably fear losing something.
 ///
 /// Scopes are reached by pushing rather than by selection, which keeps one
 /// predictable navigation model on both iPhone and iPad and means a deleted
@@ -26,13 +32,8 @@ struct FolderListView: View {
     @Query(sort: \Folder.name) private var folders: [Folder]
     @Query private var notes: [Note]
 
-    @State private var isCreatingFolder = false
-    @State private var folderBeingRenamed: Folder?
-    @State private var folderPendingDeletion: Folder?
-    @State private var nameDraft = ""
-    @State private var isComposingNote = false
-    @State private var composingIntoFolder: Folder?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var folderAction: FolderAction?
+    @State private var composition: NoteComposition?
 
     /// The leading symbol column, grown with the text it sits beside.
     ///
@@ -46,27 +47,23 @@ struct FolderListView: View {
     /// notes list, and a long one would push the folders off the screen.
     private static let recentLimit = 5
 
-    /// Animation for rows arriving and leaving, honoring Reduce Motion.
-    private var motion: Animation? {
-        reduceMotion ? nil : Theme.Motion.reorder
-    }
-
     /// Whether the store holds nothing at all, as opposed to no folders.
     private var isLibraryEmpty: Bool {
         folders.isEmpty && notes.isEmpty
     }
 
     var body: some View {
-        // Counting notes per scope is one pass over every note, done here and
-        // shared with the rows. Counting inside each row would repeat that pass
-        // once for the number and again for its spoken form.
+        // Counting notes per scope is one pass over every note, and grouping
+        // folders by their parent is one pass over every folder. Both are done
+        // here and shared with the rows, so a row costs no query of its own.
         let counts = ScopeCounts(notes: notes)
+        let tree = FolderTree(folders)
 
         return Group {
             if isLibraryEmpty {
                 emptyLibrary
             } else {
-                libraryList(counts)
+                libraryList(counts: counts, tree: tree)
             }
         }
         .background(Theme.Colors.canvas)
@@ -76,38 +73,11 @@ struct FolderListView: View {
                 createMenu
             }
         }
-        .folderNameAlert(
-            "New Folder",
-            confirmTitle: "Create",
-            isPresented: $isCreatingFolder,
-            name: $nameDraft,
-            onConfirm: createFolder
-        )
-        .folderNameAlert(
-            "Rename Folder",
-            confirmTitle: "Rename",
-            isPresented: presence(of: $folderBeingRenamed),
-            name: $nameDraft,
-            onConfirm: renameFolder
-        )
-        .confirmationDialog(
-            "Delete Folder?",
-            isPresented: presence(of: $folderPendingDeletion),
-            titleVisibility: .visible,
-            presenting: folderPendingDeletion
-        ) { folder in
-            Button("Delete Folder", role: .destructive) {
-                deleteFolder(folder)
-            }
-
-            Button("Cancel", role: .cancel) {}
-        } message: { folder in
-            Text(deletionMessage(for: folder))
-        }
-        .sheet(isPresented: $isComposingNote) {
+        .folderActions($folderAction)
+        .sheet(item: $composition) { composition in
             NavigationStack {
                 NoteEditorView(
-                    draft: NoteDraft(folder: composingIntoFolder),
+                    draft: NoteDraft(folder: composition.folder),
                     mode: .create,
                     folders: folders
                 ) { draft in
@@ -119,12 +89,14 @@ struct FolderListView: View {
 
     /// The navigator itself.
     ///
-    /// - Parameter counts: Note counts for every scope.
+    /// - Parameters:
+    ///   - counts: Note counts for every scope.
+    ///   - tree: Folders grouped by the folder they sit in.
     /// - Returns: The configured list.
-    private func libraryList(_ counts: ScopeCounts) -> some View {
+    private func libraryList(counts: ScopeCounts, tree: FolderTree) -> some View {
         List {
             librarySection(counts)
-            folderSection(counts)
+            folderSection(counts: counts, tree: tree)
             recentSection
         }
         .workspaceList()
@@ -140,7 +112,7 @@ struct FolderListView: View {
             }
 
             Button {
-                beginCreatingFolder()
+                folderAction = .create(parent: nil)
             } label: {
                 Label("New Folder", systemImage: "folder.badge.plus")
             }
@@ -165,7 +137,7 @@ struct FolderListView: View {
             .buttonStyle(.borderedProminent)
 
             Button("New Folder") {
-                beginCreatingFolder()
+                folderAction = .create(parent: nil)
             }
         }
     }
@@ -183,59 +155,35 @@ struct FolderListView: View {
         }
     }
 
-    /// The user's folders, each offering note creation, rename, and delete.
+    /// The top level of the user's folders, each offering note creation,
+    /// rename, move, and delete.
     ///
-    /// - Parameter counts: Note counts for every scope.
+    /// - Parameters:
+    ///   - counts: Note counts for every scope.
+    ///   - tree: Folders grouped by the folder they sit in.
     /// - Returns: The folders section.
-    private func folderSection(_ counts: ScopeCounts) -> some View {
+    private func folderSection(counts: ScopeCounts, tree: FolderTree) -> some View {
         Section {
-            if folders.isEmpty {
+            if tree.roots.isEmpty {
                 Text("No folders yet. Notes without one stay in Unfiled.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.Colors.textTertiary)
                     .workspaceRow()
             }
 
-            ForEach(folders) { folder in
-                scopeLink(for: .folder(folder), systemImage: "folder", counts: counts)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            folderPendingDeletion = folder
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-
-                        Button {
-                            beginRenaming(folder)
-                        } label: {
-                            Label("Rename", systemImage: "pencil")
-                        }
-                        .tint(Theme.Colors.accent)
-                    }
-                    .contextMenu {
-                        Button {
-                            beginComposingNote(in: folder)
-                        } label: {
-                            Label("New Note in Folder", systemImage: "square.and.pencil")
-                        }
-
-                        Button {
-                            beginRenaming(folder)
-                        } label: {
-                            Label("Rename Folder", systemImage: "pencil")
-                        }
-
-                        Button(role: .destructive) {
-                            folderPendingDeletion = folder
-                        } label: {
-                            Label("Delete Folder", systemImage: "trash")
-                        }
-                    }
+            ForEach(tree.roots) { folder in
+                FolderLink(
+                    folder: folder,
+                    noteCount: counts.count(for: .folder(folder)),
+                    childCount: tree.childCount(of: folder),
+                    action: $folderAction,
+                    onComposeNote: { beginComposingNote(in: folder) }
+                )
             }
         } header: {
             WorkspaceSectionHeader("Folders") {
                 Button {
-                    beginCreatingFolder()
+                    folderAction = .create(parent: nil)
                 } label: {
                     Label("Folder", systemImage: "plus")
                         .labelStyle(.titleAndIcon)
@@ -308,95 +256,12 @@ struct FolderListView: View {
         .workspaceRow()
     }
 
-    /// The typed folder name with surrounding whitespace removed.
-    private var trimmedNameDraft: String {
-        nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    /// A boolean binding that follows whether an optional holds a value.
-    ///
-    /// Alerts and dialogs are driven by `Bool`, while the thing they act on is
-    /// naturally an optional. This bridges the two and clears the optional when
-    /// the presentation is dismissed.
-    ///
-    /// - Parameter value: The optional state driving the presentation.
-    /// - Returns: A binding that reads as `true` while the value is set.
-    private func presence<Value>(of value: Binding<Value?>) -> Binding<Bool> {
-        Binding {
-            value.wrappedValue != nil
-        } set: { isPresented in
-            if !isPresented {
-                value.wrappedValue = nil
-            }
-        }
-    }
-
-    /// Spells out that deleting a folder keeps its notes.
-    ///
-    /// - Parameter folder: The folder about to be deleted.
-    /// - Returns: Copy naming how many notes will be moved to Unfiled.
-    private func deletionMessage(for folder: Folder) -> String {
-        let count = folder.notes.count
-
-        switch count {
-        case 0:
-            return "This folder is empty."
-        case 1:
-            return "1 note will be kept and moved to Unfiled."
-        default:
-            return "\(count) notes will be kept and moved to Unfiled."
-        }
-    }
-
-    /// Opens the naming alert for a new folder.
-    private func beginCreatingFolder() {
-        nameDraft = ""
-        isCreatingFolder = true
-    }
-
     /// Opens the editor for a new note.
     ///
     /// - Parameter folder: The folder the note starts out filed in, or `nil` to
     ///   start it unfiled.
     private func beginComposingNote(in folder: Folder?) {
-        composingIntoFolder = folder
-        isComposingNote = true
-    }
-
-    /// Opens the rename alert primed with a folder's current name.
-    ///
-    /// - Parameter folder: The folder to rename.
-    private func beginRenaming(_ folder: Folder) {
-        nameDraft = folder.name
-        folderBeingRenamed = folder
-    }
-
-    /// Inserts a folder using the typed name.
-    private func createFolder() {
-        withAnimation(motion) {
-            modelContext.insert(Folder(name: trimmedNameDraft))
-        }
-    }
-
-    /// Applies the typed name to the folder being renamed, then closes the alert.
-    private func renameFolder() {
-        folderBeingRenamed?.name = trimmedNameDraft
-        folderBeingRenamed = nil
-    }
-
-    /// Deletes a folder, leaving its notes unfiled.
-    ///
-    /// The relationship's nullify delete rule does the unfiling: the folder row
-    /// disappears and every note it held stays in the store, reachable under
-    /// Unfiled.
-    ///
-    /// - Parameter folder: The folder to delete.
-    private func deleteFolder(_ folder: Folder) {
-        withAnimation(motion) {
-            modelContext.delete(folder)
-        }
-
-        folderPendingDeletion = nil
+        composition = NoteComposition(in: folder)
     }
 }
 
@@ -405,6 +270,78 @@ struct FolderListView: View {
         FolderListView()
     }
     .modelContainer(for: [Note.self, Folder.self], inMemory: true)
+}
+
+/// A folder row that opens the folder, with the actions it offers attached.
+///
+/// The row is identical on the library screen and inside a folder, so both
+/// screens push the same destination and offer the same menu at every depth.
+struct FolderLink: View {
+    let folder: Folder
+    let noteCount: Int
+    let childCount: Int
+
+    /// The screen's folder flow, set by this row's actions.
+    @Binding var action: FolderAction?
+
+    /// Starts a note already filed in this folder.
+    let onComposeNote: () -> Void
+
+    var body: some View {
+        NavigationLink {
+            NoteListView(scope: .folder(folder))
+        } label: {
+            FolderRowView(
+                folder: folder,
+                noteCount: noteCount,
+                childCount: childCount
+            )
+        }
+        .workspaceRow()
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                action = .delete(folder)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+
+            Button {
+                action = .rename(folder)
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            .tint(Theme.Colors.accent)
+        }
+        .contextMenu {
+            Button(action: onComposeNote) {
+                Label("New Note in Folder", systemImage: "square.and.pencil")
+            }
+
+            Button {
+                action = .create(parent: folder)
+            } label: {
+                Label("New Folder Inside", systemImage: "folder.badge.plus")
+            }
+
+            Button {
+                action = .rename(folder)
+            } label: {
+                Label("Rename Folder", systemImage: "pencil")
+            }
+
+            Button {
+                action = .move(folder)
+            } label: {
+                Label("Move Folder", systemImage: "folder.badge.gearshape")
+            }
+
+            Button(role: .destructive) {
+                action = .delete(folder)
+            } label: {
+                Label("Delete Folder", systemImage: "trash")
+            }
+        }
+    }
 }
 
 /// A recently edited note, summarized for the root screen.
@@ -467,7 +404,9 @@ private struct RecentNoteRowView: View {
 /// Note counts for every scope shown in the folder list.
 ///
 /// Built in one pass so a list of folders costs a single walk over the notes
-/// rather than one walk per row.
+/// rather than one walk per row. Folder counts are direct membership only: a
+/// note filed in a subfolder is counted there and nowhere else, which is what
+/// makes the number on a row match what opening it shows.
 struct ScopeCounts {
     private var total = 0
     private var unfiled = 0
@@ -508,40 +447,5 @@ struct ScopeCounts {
     func spokenCount(for scope: NoteScope) -> String {
         let value = count(for: scope)
         return value == 1 ? "1 note" : "\(value) notes"
-    }
-}
-
-private extension View {
-    /// Presents an alert asking for a folder name.
-    ///
-    /// Creating and renaming ask exactly the same question, so they share one
-    /// presentation rather than two nearly identical alert blocks.
-    ///
-    /// - Parameters:
-    ///   - title: Alert title.
-    ///   - confirmTitle: Label for the confirming button.
-    ///   - isPresented: Whether the alert is showing.
-    ///   - name: The name being typed.
-    ///   - onConfirm: Runs when the user confirms a non-empty name.
-    /// - Returns: The view with the naming alert attached.
-    func folderNameAlert(
-        _ title: String,
-        confirmTitle: String,
-        isPresented: Binding<Bool>,
-        name: Binding<String>,
-        onConfirm: @escaping () -> Void
-    ) -> some View {
-        alert(title, isPresented: isPresented) {
-            TextField("Name", text: name)
-
-            Button(confirmTitle, action: onConfirm)
-                .disabled(
-                    name.wrappedValue
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .isEmpty
-                )
-
-            Button("Cancel", role: .cancel) {}
-        }
     }
 }

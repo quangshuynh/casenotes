@@ -98,8 +98,11 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var metadataItems: some View {
         if let folder = note.folder {
-            Label(folder.displayName, systemImage: "folder")
-                .accessibilityLabel("In folder \(folder.displayName)")
+            // The one place that states where a note lives, so it names the
+            // whole path rather than the innermost folder. Deep paths shorten
+            // from the front, and the line stacks before anything truncates.
+            Label(FolderHierarchy.pathText(of: folder), systemImage: "folder")
+                .accessibilityLabel(spokenLocation(of: folder))
         }
 
         if let eventDate = note.eventDate {
@@ -110,6 +113,18 @@ struct NoteDetailView: View {
         }
 
         Text("Edited \(note.updatedAt.formatted(date: .abbreviated, time: .shortened))")
+    }
+
+    /// Where a note is filed, spoken with commas rather than path separators.
+    ///
+    /// - Parameter folder: The folder the note is filed in.
+    /// - Returns: A phrase naming the folder and the folders above it.
+    private func spokenLocation(of folder: Folder) -> String {
+        guard let location = FolderHierarchy.spokenLocation(of: folder) else {
+            return "In folder \(folder.displayName)"
+        }
+
+        return "In folder \(folder.displayName), \(location)"
     }
 
     /// The rendered note text, or a quiet placeholder when the note is still empty.
