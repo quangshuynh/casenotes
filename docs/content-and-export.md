@@ -14,7 +14,8 @@ Parsing requests a partial result for malformed input. If parsing still fails,
 the renderer presents the source as plain text so content remains readable.
 
 ![Reading view rendering a heading, bold and italic text, a bulleted list, a
-block quote, and inline code](screenshots/note-markdown-dark.png){ width="300" }
+thematic break carrying a collapse control, and inline
+code](screenshots/note-markdown-dark.png){ width="300" }
 
 ## Collapsible sections in read mode
 
