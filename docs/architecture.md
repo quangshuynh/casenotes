@@ -22,9 +22,17 @@ model. Directly binding controls to a SwiftData model would write changes
 through immediately and make Cancel unreliable. The drawing editor follows the
 same boundary by holding its live `PKCanvasView` until Done.
 
+The draft also carries the note's attachments, mixing files the note already has
+with files the current edit has staged. An imported document is copied into a
+staging directory rather than into the note's own storage, so the same Save and
+Cancel boundary covers files as well as text.
+
 Saving an existing note goes through `NoteHistory`, which keeps the version the
-edit replaces before the draft is applied. Creating a note applies its draft
-directly, since a new note has no earlier version to keep.
+edit replaces before the draft is applied, and then through `NoteAttachments`,
+which reconciles the files. They are separate calls because they answer
+different rules: only authored text produces a version, while an attachment
+change moves the edit timestamp without producing one. Creating a note applies
+its draft directly, since a new note has no earlier version to keep.
 
 ![Note editor showing the title field, the body holding raw Markdown source,
 the Markdown hint, the event date row, and the folder picker naming a nested
@@ -52,6 +60,14 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
   divides those blocks into the regions read mode can fold.
 - `ListDateStyle` decides how much of a date a compact row spells out, and
   formats it for an injected calendar and locale.
+- `AttachmentStore` owns attachment files: the directories they live in, how an
+  imported document is staged and then committed, and how one is deleted. It
+  knows nothing about notes.
+- `NoteAttachments` owns the model rules around those files: display order, what
+  a save does to the list, and what has to happen before a note is deleted. It
+  reaches the file system only through the store.
+- `AttachmentDescriptor` derives what a row says about a file: its type, its
+  size, and the phrase a screen reader hears.
 - `NoteExport` defines the exact text and file representation leaving the app.
 - `NotePDFRenderer` lays a note out as a paginated PDF document, working from a
   value copy of the note's authored content rather than from any view.
@@ -79,6 +95,39 @@ date only, so opening the app parses nothing.
 Drawing bytes use external SwiftData storage and are read only when the drawing
 view or editor opens. Rasterization is keyed to the drawing edit timestamp so
 unrelated view updates do not rebuild the image.
+
+## Attachment storage
+
+Attachment bytes are deliberately not held in SwiftData. A `NoteAttachment`
+record carries metadata only, and the file lives in an `Attachments` directory
+the application owns inside Application Support. Files are named after the
+attachment's identity rather than after the document, which is what lets two
+files that arrived under the same name coexist and removes any need to make a
+user's file name safe for a path. The name the reader knows is kept as metadata.
+
+No path is persisted. Sandbox locations change between installs, so the URL is
+rebuilt from the store's directory and the recorded file name on every read, and
+a recorded name that is not a single path component is refused rather than
+resolved.
+
+Importing copies the chosen file into a staging directory under the container's
+temporary area. The copy takes security-scoped access and reads through
+`NSFileCoordinator`, so a document owned by a file provider is copied in a
+consistent state, and the content type is read from the file rather than
+inferred from its name. Saving then moves the staged file into the attachments
+directory, which is a rename inside one container rather than a copy that could
+stop halfway. Cancelling deletes what the edit staged, and the whole staging
+directory is cleared at launch so an interrupted edit leaves nothing behind.
+
+Removal is ordered deliberately: the store is written before the bytes are
+deleted. The two cannot be made one transaction, and this direction means an
+interruption can only leave a file nothing points at, never a note listing an
+attachment it cannot open.
+
+Previewing uses `QLPreviewController` through a small representable. Quick Look
+already reads every format the importer accepts, so no document renderer is
+written here, and the preview is titled with the name the file arrived with
+rather than the name it is stored under.
 
 ## PDF generation
 

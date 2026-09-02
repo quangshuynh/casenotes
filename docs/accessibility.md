@@ -33,6 +33,14 @@ Every action in the note's More Actions menu is a labelled word rather than a
 bare symbol, including the two file exports, so the difference between exporting
 Markdown and exporting a PDF is spoken rather than inferred from an icon.
 
+An attachment row is spoken as one phrase naming the file, what kind of file it
+is, and how big it is, so the format is never left to the symbol beside it and
+the separator between the type and the size is read as a pause rather than
+announced. A row whose file has gone missing says so in words and in its spoken
+label, and it is not offered as something to open. The row keeps a full-height
+target, its symbol column scales with the text beside it, and the type and size
+wrap onto a second line at accessibility text sizes instead of truncating.
+
 An exported PDF keeps the note's text as text rather than flattening the page
 into one image, which is what lets a reader select it, search it, and print it
 at full quality. What a PDF reader then does with that text is the reader's

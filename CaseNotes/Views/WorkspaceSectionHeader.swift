@@ -32,10 +32,7 @@ struct WorkspaceSectionHeader<Action: View>: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
             Text(title)
-                .font(.caption.weight(.semibold))
-                .textCase(.uppercase)
-                .tracking(0.8)
-                .foregroundStyle(Theme.Colors.textTertiary)
+                .workspaceHeaderText()
                 .accessibilityLabel(title)
                 .accessibilityAddTraits(.isHeader)
 

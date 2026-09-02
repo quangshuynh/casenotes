@@ -64,6 +64,11 @@ event date when there is one, and the body. Creation and edit timestamps, folder
 membership, pinned state, version history, and read-mode collapse state stay
 private to application bookkeeping and reach neither format.
 
+Attached files reach neither format either. An attachment is a document the note
+points at rather than part of what the note says, and concatenating a PDF or a
+Word file into an export would produce something the user did not write. There
+is no archive format that carries a note and its files together.
+
 ### Markdown file
 
 The generated document contains:

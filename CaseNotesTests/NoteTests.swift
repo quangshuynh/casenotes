@@ -340,4 +340,116 @@ struct NoteTests {
         #expect(drawings.count == 1)
         #expect(revisions.count == 1)
     }
+
+    /// Attachments were added the way folders, drawings, and version history
+    /// were: a new entity plus a cascading relationship on `Note`, which
+    /// SwiftData migrates automatically without a migration plan.
+    ///
+    /// The older store is written through ``PreAttachmentSchema``, whose `Note`
+    /// has no way to carry a file and whose model list holds no attachment
+    /// entity at all, so the file genuinely predates the feature.
+    ///
+    /// Everything a user had keeps working: notes, folders and their nesting,
+    /// filing, drawings, and revisions all come across, and every note simply
+    /// starts out with no attachments.
+    @Test
+    func existingNoteStoresOpenAfterNotesCanCarryFiles() throws {
+        let url = URL.temporaryDirectory
+            .appending(path: "casenotes-attachments-\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let writtenAt = Date(timeIntervalSince1970: 1_700_000_100)
+        let createdAt = Date(timeIntervalSince1970: 1_699_000_000)
+        let capturedAt = Date(timeIntervalSince1970: 1_700_000_200)
+        let drawingBytes = Data([0x0D, 0x0E, 0x0F])
+
+        // Write a store using the schema as it stood before attachments.
+        do {
+            let container = try ModelContainer(
+                for: Schema(PreAttachmentSchema.models),
+                configurations: ModelConfiguration(url: url)
+            )
+            let context = ModelContext(container)
+
+            let projects = PreAttachmentSchema.Folder(name: "Projects")
+            context.insert(projects)
+
+            let research = PreAttachmentSchema.Folder(name: "Research", parent: projects)
+            context.insert(research)
+
+            let filed = PreAttachmentSchema.Note(
+                title: "North Wing",
+                body: "Walked the north wing.",
+                createdAt: createdAt,
+                updatedAt: writtenAt
+            )
+            let loose = PreAttachmentSchema.Note(
+                title: "Stray Thought",
+                body: "Never filed anywhere.",
+                createdAt: createdAt,
+                updatedAt: writtenAt
+            )
+            context.insert(filed)
+            context.insert(loose)
+            filed.folder = research
+
+            let drawing = PreAttachmentSchema.NoteDrawing(
+                data: drawingBytes,
+                updatedAt: writtenAt
+            )
+            context.insert(drawing)
+            filed.drawing = drawing
+
+            let revision = PreAttachmentSchema.NoteRevision(
+                title: "North Wing",
+                body: "An earlier draft.",
+                updatedAt: createdAt,
+                capturedAt: capturedAt
+            )
+            context.insert(revision)
+            revision.note = filed
+
+            try context.save()
+        }
+
+        // Reopen the same file with the model list the app registers.
+        let container = try ModelContainer(
+            for: Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+            NoteAttachment.self,
+            configurations: ModelConfiguration(url: url)
+        )
+        let context = ModelContext(container)
+        let notes = try context.fetch(
+            FetchDescriptor<Note>(sortBy: [SortDescriptor(\.title)])
+        )
+        let folders = try context.fetch(
+            FetchDescriptor<Folder>(sortBy: [SortDescriptor(\.name)])
+        )
+
+        #expect(notes.map(\.title) == ["North Wing", "Stray Thought"])
+        #expect(folders.map(\.name) == ["Projects", "Research"])
+
+        let filed = try #require(notes.first { $0.title == "North Wing" })
+        let loose = try #require(notes.first { $0.title == "Stray Thought" })
+
+        // Nesting, filing, authored text, and timestamps are untouched.
+        #expect(filed.folder?.name == "Research")
+        #expect(filed.folder?.parent?.name == "Projects")
+        #expect(loose.folder == nil)
+        #expect(filed.body == "Walked the north wing.")
+        #expect(filed.createdAt == createdAt)
+        #expect(filed.updatedAt == writtenAt)
+
+        // Drawings and history come across with the note that owns them.
+        #expect(filed.drawing?.data == drawingBytes)
+        #expect(NoteHistory.revisions(of: filed).count == 1)
+
+        // Every note starts out carrying nothing, and the entity the store
+        // never held comes back empty rather than failing to open.
+        #expect(notes.allSatisfy { $0.attachments.isEmpty })
+        #expect(notes.allSatisfy { NoteAttachments.attachments(of: $0).isEmpty })
+
+        let attachments = try context.fetch(FetchDescriptor<NoteAttachment>())
+        #expect(attachments.isEmpty)
+    }
 }

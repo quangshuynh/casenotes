@@ -46,6 +46,11 @@ struct NoteDetailView: View {
                     NoteDrawingView(drawing: drawing)
                         .padding(.top, Theme.Spacing.small)
                 }
+
+                if !note.attachments.isEmpty {
+                    NoteAttachmentsView(note: note)
+                        .padding(.top, Theme.Spacing.small)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.large)
@@ -241,6 +246,11 @@ struct NoteDetailView: View {
 /// The folder query lives here rather than in the reading view, so reading a
 /// note neither fetches folders nor re-renders when they change. It exists only
 /// while the sheet is presented.
+///
+/// Saving is two writes rather than one because they answer different rules.
+/// ``NoteHistory`` keeps the version the edit replaces, which only authored
+/// text can produce, and ``NoteAttachments`` reconciles the files, which moves
+/// the edit timestamp without recording a version.
 private struct EditNoteSheet: View {
     let note: Note
 
@@ -254,7 +264,18 @@ private struct EditNoteSheet: View {
                 mode: .edit,
                 folders: folders
             ) { draft in
-                NoteHistory.save(draft, to: note, in: modelContext)
+                // One timestamp for the whole save, so a note whose text and
+                // whose files both changed does not end up with two edit times
+                // a moment apart.
+                let savedAt = Date()
+
+                NoteHistory.save(draft, to: note, in: modelContext, at: savedAt)
+                NoteAttachments.apply(
+                    draft.attachments,
+                    to: note,
+                    in: modelContext,
+                    at: savedAt
+                )
             }
         }
     }

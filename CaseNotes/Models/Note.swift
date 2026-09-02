@@ -41,6 +41,18 @@ final class Note {
     @Relationship(deleteRule: .cascade, inverse: \NoteRevision.note)
     var revisions: [NoteRevision] = []
 
+    /// Files kept with this note, in no guaranteed order.
+    ///
+    /// Cascading like drawings and history do: an attached document belongs to
+    /// one note and is meaningless without it. The cascade removes the records
+    /// and nothing else, though. The bytes sit in the app's attachments
+    /// directory, which SwiftData knows nothing about, so deleting a note goes
+    /// through ``NoteAttachments/delete(_:in:using:)`` to clear the files too.
+    /// Read this through ``NoteAttachments/attachments(of:)`` rather than
+    /// directly, because SwiftData makes no promise about relationship order.
+    @Relationship(deleteRule: .cascade, inverse: \NoteAttachment.note)
+    var attachments: [NoteAttachment] = []
+
     init(
         title: String = "",
         body: String = "",

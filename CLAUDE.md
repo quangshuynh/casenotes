@@ -45,6 +45,7 @@ verified, say which part.
 ## Non-negotiables
 
 - Native Apple frameworks first. No new dependencies without a strong reason.
+  Attached files are previewed with Quick Look, never with a renderer of ours.
 - Local-first. No networking, accounts, analytics, telemetry, or cloud.
 - No unsupported security claims. The app lock gates the interface, not the data.
 - Synthetic content only. Never real personal data anywhere, including history.
@@ -114,6 +115,30 @@ Read mode folds sections at thematic breaks. Constraints when touching it:
   change, no stored preference. Persisted fold state needs explicit scope.
 - Leave the editor alone. The full source stays visible and natively selectable,
   which rules out building folding into the editable text control.
+
+## Attachments
+
+A note owns local files. `AttachmentStore` in `Logic/` owns the file system and
+knows nothing about notes; `NoteAttachments` beside it owns the model rules and
+reaches the file system only through the store. Constraints when touching them:
+
+- Never put attachment bytes in SwiftData, and never persist a path. A stored
+  file is named after the attachment's identity and found by rebuilding its URL.
+- Importing stages into a temporary directory. Cancel has to undo the import as
+  well as the list, and Save is a move inside the container rather than a copy
+  that can stop halfway.
+- Ask the file what it is. A name is display metadata; the content type decides
+  whether a file is accepted and what extension it is stored under.
+- Order removals: write the store, then delete the bytes. A record without a
+  file is visible breakage; a file without a record is invisible. This was found
+  by running it, not by reading the code.
+- Attaching or removing moves `updatedAt` and writes no revision. Previewing
+  writes nothing. Deleting a note must clear its files; deleting a folder must
+  not.
+- Quick Look is the viewer. Do not write a renderer for PDF, DOCX, or anything
+  else, and do not let an attachment into an export or into the Markdown body.
+- One bad attachment must never cost the note. Missing bytes are a row that says
+  so, not a blank screen.
 
 ## PDF export
 

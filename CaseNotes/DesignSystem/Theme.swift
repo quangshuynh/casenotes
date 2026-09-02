@@ -113,6 +113,22 @@ extension View {
             .background(Theme.Colors.canvas)
     }
 
+    /// Styles text as the quiet capitalized label that opens a group.
+    ///
+    /// Section headers read as structure rather than as content: small,
+    /// tertiary, and set in capitals. The treatment lives here because it is
+    /// used both inside a list, through ``WorkspaceSectionHeader``, and on the
+    /// reading screen, which is not a list and would otherwise restate the
+    /// colors and the type in a view.
+    ///
+    /// - Returns: The text styled as a section label.
+    func workspaceHeaderText() -> some View {
+        font(.caption.weight(.semibold))
+            .textCase(.uppercase)
+            .tracking(0.8)
+            .foregroundStyle(Theme.Colors.textTertiary)
+    }
+
     /// Styles a browsing list as a workspace: flat rows on the canvas, told
     /// apart by hairlines rather than by cards.
     ///

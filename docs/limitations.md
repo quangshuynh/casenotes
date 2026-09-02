@@ -16,6 +16,22 @@ explicitly addresses them:
 - Exported files are not encrypted or password protected. Once a file is shared
   or saved it is controlled by wherever it was sent rather than by CaseNotes.
 - PDF code blocks are monospaced but not syntax highlighted.
+- Attachments are local files the app copies into its own container. They are
+  not encrypted, are not synced, and travel only in that device's backups.
+- Attachments do not appear in Markdown or PDF exports, and there is no archive
+  format that carries a note together with its files.
+- Importable kinds are PDF, Word documents, plain text and Markdown, and PNG and
+  JPEG images. Other formats are refused, as are empty files.
+- Attachment contents are not searched, indexed, or read. Search covers note
+  text, and an attachment is matched by nothing at all, not even its file name.
+- Attachments are not versioned. History records authored text, so removing a
+  file cannot be undone by restoring an older version.
+- Attachments are shown in the order they were added and cannot be reordered or
+  renamed, and there is no drag and drop.
+- An attachment is previewed through the system document viewer. CaseNotes
+  renders no document format itself and cannot edit or annotate one.
+- A file whose bytes have gone missing is reported as missing rather than
+  repaired. The note stays usable and the row can be removed.
 - Version history covers the authored text of a note: title, body, and event
   date. Drawings, folder membership, and pinned state are not versioned, and
   history is kept on the device with the note rather than exported.

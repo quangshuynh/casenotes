@@ -397,10 +397,17 @@ struct NoteListView: View {
     /// resolved against that same filtered and sorted array rather than against
     /// every note, or the wrong notes would be deleted while searching.
     ///
+    /// Deletion goes through ``NoteAttachments`` rather than straight to the
+    /// context. Cascading removes a note's attachment records but knows nothing
+    /// about the files behind them, so deleting here directly would leave the
+    /// bytes in the container with nothing referring to them.
+    ///
     /// - Parameter offsets: Positions within ``visibleNotes``.
     private func deleteNotes(at offsets: IndexSet) {
+        let visible = visibleNotes
+
         for index in offsets {
-            modelContext.delete(visibleNotes[index])
+            NoteAttachments.delete(visible[index], in: modelContext)
         }
     }
 }
