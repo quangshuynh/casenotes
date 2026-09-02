@@ -11,8 +11,8 @@
 
 CaseNotes is a local-first iOS notes app built with SwiftUI, SwiftData, and
 first-party Apple frameworks. It combines Markdown writing, nested folders,
-PencilKit sketches, and a device-authentication interface gate without accounts,
-analytics, or cloud services.
+PencilKit sketches, local file attachments, and a device-authentication
+interface gate without accounts, analytics, or cloud services.
 
 <p align="center">
   <img src="docs/screenshots/notes-dark.png" alt="All Notes with a pinned note at the top, a note carrying a drawing, and folder names" width="240">
@@ -31,6 +31,7 @@ analytics, or cloud services.
   current version
 - Nested folders with safe, note-preserving organization
 - One optional PencilKit drawing per note
+- Local file attachments per note, previewed with Quick Look
 - Copy, share, Markdown file export, and PDF export of the rendered note
   including its drawing
 - LocalAuthentication app lock and an immediate app-switcher privacy shield
@@ -39,9 +40,9 @@ analytics, or cloud services.
 ## Technology
 
 SwiftUI provides the interface, SwiftData persists notes and folders, and
-PencilKit, LocalAuthentication, CoreTransferable, Core Text, UIKit, and
-Foundation cover the platform integrations. The project has no third-party
-runtime dependencies.
+PencilKit, LocalAuthentication, CoreTransferable, Core Text, QuickLook,
+UniformTypeIdentifiers, UIKit, and Foundation cover the platform integrations.
+The project has no third-party runtime dependencies.
 
 ## Quick start
 
@@ -69,9 +70,10 @@ CaseNotes implements its intended core scope and has not been submitted to the
 App Store. Notes remain on one device unless included in that device's backups.
 There is no sync or import, folders have no drag and drop or manual ordering,
 drawings are not embedded in Markdown exports, and version history covers note
-text rather than drawings.
+text rather than drawings or attached files. Attachments are local copies the
+app keeps in its own container and do not travel in an export.
 Exported files are not encrypted, and the app lock gates the interface but does
-not encrypt the SwiftData store. See
+not encrypt the SwiftData store or the files attached to a note. See
 [limitations](https://quangshuynh.github.io/casenotes/limitations/) for the
 complete list.
 

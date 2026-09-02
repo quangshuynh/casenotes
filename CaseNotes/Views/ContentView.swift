@@ -20,6 +20,13 @@ struct ContentView: View {
         NavigationStack {
             FolderListView()
         }
+        // An edit that ended without a Save or a Cancel, because the app was
+        // killed or the device ran out of room, leaves its imported files in
+        // staging with no editor left to discard them. Nothing there outlives a
+        // launch, so the directory is cleared before browsing begins.
+        .task {
+            AttachmentStore.shared.purgeStaging()
+        }
     }
 }
 

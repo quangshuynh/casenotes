@@ -79,8 +79,9 @@ and keep cards for the editor, where a distinct surface is the point.
 - Folder rows carry hierarchy through navigation, not through an expanded tree.
   A screen lists one level, and indentation appears only in a destination
   picker, where a written path states the same structure beside it.
-- Note creation goes through `NoteDraft.insertNote(into:at:)` wherever it is
-  offered, which is what keeps a new note's first save out of version history.
+- Note creation goes through `NoteDraft.insertNote(into:at:using:)` wherever it
+  is offered, which is what keeps a new note's first save out of version history
+  and what saves the files a new note was composed with.
 - Visual work must not change Save and Cancel, authored timestamps, or version
   history semantics.
 
@@ -122,6 +123,8 @@ Folders form a tree, and organizing notes never edits them:
 - A schema change to `Folder` needs a migration test written through a genuinely
   frozen prior schema. `CaseNotesTests/PreNestedFolderSchema.swift` is frozen at
   the flat-folder models and must not gain properties.
+  `CaseNotesTests/PreAttachmentSchema.swift` is frozen at the models as they
+  stood before a note could carry a file, for the same reason.
 
 ## Markdown folding invariants
 
@@ -151,7 +154,7 @@ export formats:
 - A PDF carries the complete note body. Read-mode collapse state is view state
   and has no route into an exporter, so folding never changes a file.
 - Title, event date, and body are exported. Timestamps, pinned state, folder,
-  and version history are not.
+  version history, and attached files are not.
 - A PDF includes the note's current drawing. That does not change version
   history, which still records authored text only.
 - A drawing that is empty or whose bytes no longer decode is omitted, and the
@@ -164,6 +167,42 @@ export formats:
   sanitization policy, and formats differ only by extension.
 - Exported files are not encrypted or password protected, and documentation must
   not imply otherwise.
+
+## Attachment invariants
+
+A note can keep local files. These rules are behavior, and tests protect them:
+
+- Bytes are not in SwiftData. `NoteAttachment` is metadata, and the file lives
+  in the application's own `Attachments` directory, which `AttachmentStore`
+  owns. No path is persisted: the URL is rebuilt from the directory and the
+  stored file name, and a name that is not a single path component addresses
+  nothing.
+- A file is stored under its attachment's identity, never under the name it
+  arrived with. That is what lets two files called the same thing coexist, and
+  it is why the original name is display metadata rather than the file's
+  identity.
+- Importing stages. A chosen file is copied into a staging directory, and
+  nothing about the note or its permanent storage changes until Save. Cancel
+  deletes what the edit staged, including for a note that was never created,
+  and leaves a file the edit had only marked for removal in place.
+- Content type comes from the file, not from its name. Security-scoped access
+  and a coordinated read are taken for anything outside the container, and an
+  unsupported, empty, or unreadable file is refused with a message rather than
+  attached.
+- `Note.attachments` cascades, and a cascade removes records only. Deleting a
+  note goes through `NoteAttachments.delete(_:in:using:)` so the bytes go too.
+  Deleting a folder deletes no note and must therefore reach no attachment.
+- Records are written before bytes are deleted. The order is the whole
+  guarantee: an interruption may leave a file nothing points at, never a note
+  listing an attachment it cannot open.
+- Attaching or removing a file moves `updatedAt` and writes no `NoteRevision`.
+  Opening or previewing one changes nothing at all.
+- A missing or corrupt file costs that file. The note still reads, the row says
+  the file is missing, and it can still be removed.
+- Attachments are structured relationships. Never inject a link into the stored
+  Markdown, never rewrite the body when the list changes, and never put an
+  attachment into an export.
+- Previewing is Quick Look. Do not write a renderer for any attached format.
 
 ## Version history invariants
 

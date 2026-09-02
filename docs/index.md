@@ -6,7 +6,8 @@
 
 CaseNotes is a local-first notes app for iOS. It uses SwiftUI and SwiftData for
 the core experience, Markdown for structured writing, PencilKit for sketches,
-and LocalAuthentication to gate the interface.
+Quick Look for previewing attached files, and LocalAuthentication to gate the
+interface.
 
 The application uses first-party Apple frameworks only. It contains no
 networking, account system, analytics, telemetry, advertising, or cloud
@@ -21,6 +22,7 @@ dependency.
 - Render Markdown in a dedicated reading view
 - Read and restore previous versions of a note
 - Attach one PencilKit drawing to a note
+- Keep local files with a note and open them in the system document preview
 - Copy, share, or export Markdown text
 - Require device-owner authentication before showing note content
 - Cover the interface immediately outside the active scene phase

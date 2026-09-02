@@ -20,16 +20,28 @@ struct NoteDraft: Equatable {
     var eventDate: Date?
     var folder: Folder?
 
+    /// The files the note should end up with.
+    ///
+    /// Held here so attaching and removing a document answer to Save and Cancel
+    /// exactly as the text does. The list mixes files the note already has with
+    /// files this edit has staged, and neither the store nor the file system is
+    /// touched until ``NoteAttachments/apply(_:to:in:using:at:)`` runs. It is
+    /// deliberately outside ``apply(to:at:)``, which writes only what the model
+    /// itself holds.
+    var attachments: [DraftAttachment] = []
+
     init(
         title: String = "",
         body: String = "",
         eventDate: Date? = nil,
-        folder: Folder? = nil
+        folder: Folder? = nil,
+        attachments: [DraftAttachment] = []
     ) {
         self.title = title
         self.body = body
         self.eventDate = eventDate
         self.folder = folder
+        self.attachments = attachments
     }
 
     /// Creates a draft seeded with the current contents of a stored note.
@@ -40,7 +52,8 @@ struct NoteDraft: Equatable {
             title: note.title,
             body: note.body,
             eventDate: note.eventDate,
-            folder: note.folder
+            folder: note.folder,
+            attachments: NoteAttachments.draftAttachments(of: note)
         )
     }
 
@@ -58,6 +71,10 @@ struct NoteDraft: Equatable {
     }
 
     /// Reports whether applying this draft would actually change the note.
+    ///
+    /// Attachments are deliberately absent. ``apply(to:at:)`` writes only the
+    /// fields the note itself holds, and files are reconciled separately by
+    /// ``NoteAttachments``, which decides on its own whether anything changed.
     ///
     /// - Parameter note: The note this draft would be written to.
     /// - Returns: `true` when at least one stored field differs, filing included.
@@ -120,16 +137,28 @@ struct NoteDraft: Equatable {
     /// offers note creation shares this one path so that stays true wherever a
     /// note is started from.
     ///
+    /// Any files the draft staged are saved here too, for the same reason: one
+    /// creation path means a note started from the library and one started
+    /// inside a folder cannot differ in what reaches the store. They are
+    /// committed with the creation timestamp, so a brand new note's dates all
+    /// agree.
+    ///
     /// - Parameters:
     ///   - context: The context the new note is inserted into.
     ///   - date: The creation and edit timestamp. Injectable so tests can
     ///     assert on an exact value.
+    ///   - store: The store that takes ownership of the staged files.
     /// - Returns: The inserted note.
     @discardableResult
-    func insertNote(into context: ModelContext, at date: Date = Date()) -> Note {
+    func insertNote(
+        into context: ModelContext,
+        at date: Date = Date(),
+        using store: AttachmentStore = .shared
+    ) -> Note {
         let note = Note(createdAt: date, updatedAt: date)
         apply(to: note, at: date)
         context.insert(note)
+        NoteAttachments.apply(attachments, to: note, in: context, using: store, at: date)
 
         return note
     }

@@ -15,7 +15,10 @@ struct CaseNotesApp: App {
             AppLockView()
         }
         .modelContainer(
-            for: [Note.self, Folder.self, NoteDrawing.self, NoteRevision.self]
+            for: [
+                Note.self, Folder.self, NoteDrawing.self, NoteRevision.self,
+                NoteAttachment.self,
+            ]
         )
     }
 }

@@ -57,9 +57,9 @@ Creating a note records nothing, because there is no earlier state to recover.
 Saving without a change, cancelling, moving a note between folders, pinning it,
 and simply reading it all leave history untouched.
 
-Drawings are current-state attachments rather than versioned content. Restoring
-a previous version changes the text and leaves the note's drawing exactly as it
-is.
+Drawings and attached files are current state rather than versioned content.
+Restoring a previous version changes the text and leaves the note's drawing and
+its files exactly as they are.
 
 ## Library
 
@@ -114,6 +114,45 @@ bottom and Cancel, Clear, and Done in the navigation bar](screenshots/drawing-da
 
 The canvas keeps a light paper ground in either app appearance, so ink looks the
 same while it is drawn and while it is read.
+
+## Attachments
+
+A note can keep local files alongside its writing, such as a PDF or a Word
+document. The editor lists what the note holds, adds a file through the system
+document picker, and removes one with the list's delete action.
+
+Attachments answer to Save and Cancel exactly as the text does. A file chosen
+while editing is copied into temporary storage and staged, not saved: Cancel
+discards the import and leaves nothing behind, and removing a file the note
+already has takes effect only when the edit is saved. A note that is created and
+then cancelled leaves neither a note nor a file.
+
+Read mode lists the note's files after its content and drawing. Each row names
+the file, says what kind it is and how big, and opens it in the system document
+preview when tapped. Opening a file is a read: it does not change the note's
+edit time, and it records no version.
+
+Adding or removing a file is a change to the note, so a save that changes the
+list updates the note's edit time. It is not a change to the note's writing, so
+it records no version. Version history stays text only.
+
+Importable kinds are PDF, Word documents, plain text and Markdown, and PNG and
+JPEG images. What a file is comes from the file itself rather than from its
+name, so a document that was renamed is still recognized for what it is and a
+misleading extension cannot get an unsupported file in. Empty files and files
+that cannot be read are refused with an explanation rather than attached.
+
+Files are copied into storage the app owns, so the note keeps working after the
+original is moved or deleted. Two files that arrived with the same name can both
+be kept: they are stored under separate names and shown under the names they
+came with. Deleting a note deletes its files. Deleting a folder deletes no
+notes, so it reaches no attachment either.
+
+A file that has gone missing costs that file and nothing else. Its row says so
+and cannot be opened, and the rest of the note reads normally.
+
+Attachments are not included in Markdown or PDF exports. See
+[Content and Export](content-and-export.md).
 
 ## Sharing and export
 

@@ -5,7 +5,10 @@
 The CI-gated suite uses Swift Testing and covers model behavior, persistence,
 schema migration, drafts and timestamps, version history and restore, organizing
 notes, Markdown parsing, exports, folder relationships and hierarchy, drawing
-persistence, and app lock policy.
+persistence, attachment import and storage, and app lock policy.
+
+Attachment tests run against a file store rooted in a temporary directory, so
+none of them reads or writes the real application container.
 
 ```bash
 xcodebuild test -project CaseNotes.xcodeproj -scheme CaseNotes \
@@ -17,10 +20,12 @@ Dates, locales, and time zones are injected where formatted output matters.
 Persistence tests use an in-memory `ModelContainer` except when reopening an
 older on-disk schema is the behavior under test. Those older stores are written
 through frozen model declarations in the test target: `PreRevisionSchema`, which
-declares the models as they stood before version history, and
-`PreNestedFolderSchema`, which declares them as they stood while folders were
-flat. Each must stay frozen at the schema it describes, since writing a fixture
-with the current models would produce the current schema and test nothing.
+declares the models as they stood before version history, `PreNestedFolderSchema`,
+which declares them as they stood while folders were flat, and
+`PreAttachmentSchema`, which declares them as they stood before a note could
+carry a file. Each must stay frozen at the schema it describes, since writing a
+fixture with the current models would produce the current schema and test
+nothing.
 
 ## UI test
 
