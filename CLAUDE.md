@@ -116,6 +116,28 @@ Read mode folds sections at thematic breaks. Constraints when touching it:
 - Leave the editor alone. The full source stays visible and natively selectable,
   which rules out building folding into the editable text control.
 
+## Markdown modes
+
+Reading, Live Preview, and Source are three views of one stored string.
+Constraints when touching them:
+
+- Source stays canonical. No WYSIWYG storage, no HTML, no second editable copy,
+  and no rewriting of a user's Markdown behind their back.
+- Region boundaries come from `MarkdownSourceMap`, which proves each candidate
+  against the existing parse. Do not split the source on newlines, and do not
+  add a second parser or a third-party engine.
+- Live Preview edits `NoteDraft`. It must not bind to SwiftData, must not
+  autosave, and must not write a revision or move `updatedAt`. Mode switching
+  changes nothing at all.
+- The mode is ephemeral. Persisting it needs a preference mechanism this app
+  does not have and should not gain for a display choice.
+- Keep the UIKit bridge narrow: one `UITextView`, one region, plain source. Any
+  reshaping of what it holds happens in the same event that caused it, because
+  pushing text on a later redraw loses keystrokes under fast typing. That was
+  found by typing into a long note, not by reading the code.
+- Do not disable autocorrection to make `---` easier to type. The smart-dash
+  finding in CONTEXT.md is still a product call and still out of scope.
+
 ## Attachments
 
 A note owns local files. `AttachmentStore` in `Logic/` owns the file system and

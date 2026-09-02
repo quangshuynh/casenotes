@@ -33,6 +33,16 @@ Every action in the note's More Actions menu is a labelled word rather than a
 bare symbol, including the two file exports, so the difference between exporting
 Markdown and exporting a PDF is spoken rather than inferred from an icon.
 
+The editor's Markdown mode control is a named menu carrying the active mode as
+its value, so the mode is written out rather than shown as a highlighted symbol.
+In Live Preview the region being edited is a text field VoiceOver reads as one,
+including the Markdown syntax it exposes, and every rendered region is a
+container with an Edit Markdown Source action, so entering a region does not
+depend on tapping a glyph. Rendered headings keep their heading trait. The
+active region is marked by being a recessed field rather than by color alone,
+and it uses the full width at accessibility text sizes rather than narrowing
+into a column.
+
 An attachment row is spoken as one phrase naming the file, what kind of file it
 is, and how big it is, so the format is never left to the symbol beside it and
 the separator between the type and the size is read as a pause rather than

@@ -58,6 +58,13 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
   order history reads in, and what restoring one does.
 - `MarkdownDocument` converts Markdown source into renderable blocks, and
   divides those blocks into the regions read mode can fold.
+- `MarkdownSourceMap` says which characters of the source produced which
+  blocks, which is what Live Preview needs and what the parser does not report.
+  It proposes boundaries with a cheap scan and accepts one only when the text
+  between two of them parses on its own into exactly the blocks the whole
+  document has at that position, so Foundation stays the only authority on what
+  the Markdown means.
+- `MarkdownEditingMode` names the three ways the editor can show Markdown.
 - `ListDateStyle` decides how much of a date a compact row spells out, and
   formats it for an injected calendar and locale.
 - `AttachmentStore` owns attachment files: the directories they live in, how an
@@ -79,6 +86,15 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 Folder hierarchy is derived rather than stored. A location is built by walking
 the parent chain when it is displayed, so renaming or moving a folder needs no
 rewrite of anything beneath it and no path string can go stale.
+
+`MarkdownBlockView` is the one place a parsed block becomes pixels, so reading
+and Live Preview cannot drift apart. `MarkdownLivePreview` lays out the regions
+and owns which one is active; `MarkdownSourceRegionEditor` is a deliberately
+narrow `UITextView` bridge that holds one region's characters, because SwiftUI
+exposes neither the cursor's position nor a way to place it. Dividing a whole
+note costs more than parsing it, so it happens when a note is opened or a region
+is entered, never on a keystroke: an edit re-divides only the span it touched
+and splices the result back into the map.
 
 Markdown parsing is retained in `MarkdownText` state and refreshed only when
 the source changes. Section division happens once with the parse rather than on

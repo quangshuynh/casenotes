@@ -47,6 +47,7 @@ struct NoteEditorView: View {
     private let onSave: (NoteDraft) -> Void
 
     @State private var draft: NoteDraft
+    @State private var markdownMode = MarkdownEditingMode.default
     @State private var eventDateEnabled: Bool
     @State private var isConfirmingDiscard = false
     @State private var isImportingAttachment = false
@@ -91,15 +92,9 @@ struct NoteEditorView: View {
                     .submitLabel(.next)
                     .onSubmit { focusedField = .body }
 
-                TextEditor(text: $draft.body)
-                    .font(.body)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .scrollContentBackground(.hidden)
-                    .focused($focusedField, equals: .body)
-                    .frame(minHeight: 220)
-                    .accessibilityLabel("Note Body")
+                bodyEditor
             } footer: {
-                Text("Markdown is supported. Use # for headings, * for emphasis, - for lists, > for quotes, and backticks for code.")
+                Text(markdownMode.footer)
             }
             .listRowBackground(Theme.Colors.surface)
 
@@ -156,6 +151,10 @@ struct NoteEditorView: View {
                 }
             }
 
+            ToolbarItem(placement: .topBarTrailing) {
+                markdownModePicker
+            }
+
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
                     onSave(draft)
@@ -200,6 +199,73 @@ struct NoteEditorView: View {
                 focusedField = .title
             }
         }
+    }
+
+    /// The note body, presented the way the chosen Markdown mode presents it.
+    ///
+    /// All three modes read and write the same draft string. Reading renders it
+    /// through the same view the note screen uses and offers no way to type,
+    /// live preview renders everything but the region under the caret, and
+    /// source is the field this editor has always had. Switching between them
+    /// changes what is on screen and nothing else: no text is rewritten, the
+    /// draft is not touched, and nothing reaches the store until Save.
+    @ViewBuilder
+    private var bodyEditor: some View {
+        switch markdownMode {
+        case .reading:
+            if draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text("This note has no content yet.")
+                    .font(.body)
+                    .italic()
+                    .foregroundStyle(Theme.Colors.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                MarkdownText(source: draft.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, Theme.Spacing.xSmall)
+            }
+
+        case .livePreview:
+            MarkdownLivePreview(source: $draft.body)
+                .padding(.vertical, Theme.Spacing.xSmall)
+
+        case .source:
+            TextEditor(text: $draft.body)
+                .font(.body)
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .scrollContentBackground(.hidden)
+                .focused($focusedField, equals: .body)
+                .frame(minHeight: 220)
+                .accessibilityLabel("Note Body")
+        }
+    }
+
+    /// The control that chooses how Markdown is shown.
+    ///
+    /// A menu rather than a segmented control: three names do not fit across a
+    /// toolbar at large text sizes, and a menu states the current mode in words
+    /// beside its symbol instead of leaving it to a highlighted segment. The
+    /// mode is view state and is deliberately not remembered between edits,
+    /// because this app has no preference store and inventing one for a display
+    /// choice would be the wrong trade.
+    private var markdownModePicker: some View {
+        Menu {
+            Picker("Markdown Mode", selection: $markdownMode) {
+                ForEach(MarkdownEditingMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.symbolName)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            // Written out rather than left to the symbol. A toolbar renders a
+            // menu's label icon-only where it can, and the active mode would
+            // then be carried by a glyph alone.
+            Text(markdownMode.title)
+        }
+        .accessibilityLabel("Markdown Mode")
+        .accessibilityValue(markdownMode.title)
+        .accessibilityHint(markdownMode.summary)
     }
 
     /// The files this note will be saved with.

@@ -25,6 +25,7 @@ interface gate without accounts, analytics, or cloud services.
 - A compact library of scopes, folders, and recently edited notes
 - Note and folder creation from the library, a folder, or an empty scope
 - Draft-based editing with explicit Save and Cancel behavior
+- Three Markdown modes in the editor: Reading, Live Preview, and Source
 - Markdown reading mode with collapsible sections, search, sorting, pinning,
   and optional event dates
 - Version history that keeps previous text and restores it without losing the
