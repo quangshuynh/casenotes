@@ -299,11 +299,23 @@ struct FolderLink: View {
         }
         .workspaceRow()
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
+            // Not `role: .destructive`: List gives a destructive-role swipe
+            // button its own row-removal animation, started the instant it is
+            // tapped and independent of whether the row actually still exists
+            // once the gesture ends. Deletion here waits on a confirmation
+            // dialog, so that animation and the later real removal (driven by
+            // the @Query change once the user confirms) raced UIKit's own
+            // item-count bookkeeping and crashed
+            // (NSInternalInconsistencyException, "attempt to delete item 0
+            // from section 1 which only contains 0 items before the update").
+            // A plain button with the same red tint keeps the destructive
+            // color without the automatic removal animation.
+            Button {
                 action = .delete(folder)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
 
             Button {
                 action = .rename(folder)

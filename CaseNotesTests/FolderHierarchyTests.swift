@@ -348,6 +348,121 @@ struct FolderHierarchyTests {
         #expect(work.children.map(\.name) == ["Project Beta"])
     }
 
+    /// The smallest deterministic case behind a defect once seen only in the
+    /// interface: deleting the sole root folder in the store while it holds a
+    /// note. The crash there was a `List` reconciliation bug, not a data
+    /// problem, but this pins the data side too.
+    @Test
+    func deletingTheOnlyRootFolderUnfilesItsNote() throws {
+        let context = try makeContext()
+        let onlyFolder = folder("Site Visits", context: context)
+
+        let editedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let note = Note(title: "Warehouse Walkthrough", body: "Notes.", updatedAt: editedAt, folder: onlyFolder)
+        context.insert(note)
+        try context.save()
+
+        FolderHierarchy.delete(onlyFolder, in: context)
+        try context.save()
+
+        #expect(try context.fetch(FetchDescriptor<Folder>()).isEmpty)
+        #expect(note.folder == nil)
+        #expect(note.updatedAt == editedAt)
+        #expect(note.body == "Notes.")
+        #expect(note.revisions.isEmpty)
+    }
+
+    @Test
+    func deletingTheOnlyRootFolderUnfilesEveryNoteItHolds() throws {
+        let context = try makeContext()
+        let onlyFolder = folder("Site Visits", context: context)
+
+        let first = Note(title: "First", folder: onlyFolder)
+        let second = Note(title: "Second", folder: onlyFolder)
+        context.insert(first)
+        context.insert(second)
+        try context.save()
+
+        FolderHierarchy.delete(onlyFolder, in: context)
+        try context.save()
+
+        #expect(try context.fetch(FetchDescriptor<Folder>()).isEmpty)
+        #expect(first.folder == nil)
+        #expect(second.folder == nil)
+    }
+
+    @Test
+    func deletingAnEmptyRootFolderLeavesNoTraceOfIt() throws {
+        let context = try makeContext()
+        let onlyFolder = folder("Empty", context: context)
+        try context.save()
+
+        FolderHierarchy.delete(onlyFolder, in: context)
+        try context.save()
+
+        #expect(try context.fetch(FetchDescriptor<Folder>()).isEmpty)
+    }
+
+    @Test
+    func deletingARootFolderLeavesItsRootSiblingUntouched() throws {
+        let context = try makeContext()
+        let first = folder("Site Visits", context: context)
+        let second = folder("Meetings", context: context)
+        let note = Note(title: "Kickoff", folder: second)
+        context.insert(note)
+        try context.save()
+
+        FolderHierarchy.delete(first, in: context)
+        try context.save()
+
+        let remaining = try context.fetch(FetchDescriptor<Folder>())
+        #expect(remaining.map(\.name) == ["Meetings"])
+        #expect(second.isRoot)
+        #expect(note.folder?.name == "Meetings")
+    }
+
+    /// Promotion moves only the deleted folder's direct children. A
+    /// grandchild stays exactly where it was, under its own parent, rather
+    /// than being pulled up a second time, and the result is still cycle
+    /// free.
+    @Test
+    func deletingAFolderLeavesGrandchildrenUnderTheirOwnParent() throws {
+        let context = try makeContext()
+        let root = folder("A", context: context)
+        let middle = folder("B", in: root, context: context)
+        let child = folder("C", in: middle, context: context)
+        let grandchild = folder("D", in: child, context: context)
+        try context.save()
+
+        FolderHierarchy.delete(middle, in: context)
+        try context.save()
+
+        #expect(child.parent?.name == "A")
+        #expect(grandchild.parent?.name == "C")
+        #expect(FolderHierarchy.ancestors(of: grandchild).map(\.name) == ["C", "A"])
+        #expect(!FolderHierarchy.isDescendant(root, of: grandchild))
+    }
+
+    /// Inline attachment placements are ordinary authored text. Deleting the
+    /// folder a note sits in must not rewrite the body, so a placement stays
+    /// exactly as written.
+    @Test
+    func deletingAFolderLeavesInlineAttachmentReferencesInTheBody() throws {
+        let context = try makeContext()
+        let siteVisits = folder("Site Visits", context: context)
+        let reference = InlineAttachmentMarker.text(for: UUID())
+        let body = "Before.\n\n\(reference)\n\nAfter."
+        let note = Note(title: "Landing Photographs", body: body, folder: siteVisits)
+        context.insert(note)
+        try context.save()
+
+        FolderHierarchy.delete(siteVisits, in: context)
+        try context.save()
+
+        #expect(note.body == body)
+        #expect(note.folder == nil)
+    }
+
     // MARK: Creation
 
     @Test
