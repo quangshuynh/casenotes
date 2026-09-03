@@ -17,18 +17,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Select Xcode 26.5
-        run: sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
-
-      - name: Show Xcode version
-        run: xcodebuild -version
-
+      
       - name: Run unit tests
         run: |
+          set -euo pipefail
+      
+          xcrun simctl list runtimes
+          xcrun simctl list devicetypes
+      
+          RUNTIME_ID=$(xcrun simctl list runtimes \
+            | awk '/iOS/ && /available/ {print $NF}' \
+            | tr -d '()' \
+            | tail -1)
+      
+          if [ -z "$RUNTIME_ID" ]; then
+            echo "No available iOS Simulator runtime found."
+            exit 1
+          fi
+      
+          DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-17"
+          DEVICE_NAME="CaseNotes CI"
+      
+          DEVICE_ID=$(xcrun simctl create "$DEVICE_NAME" "$DEVICE_TYPE" "$RUNTIME_ID")
+      
+          trap 'xcrun simctl delete "$DEVICE_ID" || true' EXIT
+      
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+      
           xcodebuild test \
             -project CaseNotes.xcodeproj \
             -scheme CaseNotes \
-            -destination 'generic/platform=iOS Simulator'
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             -only-testing:CaseNotesTests \
             CODE_SIGNING_ALLOWED=NO
