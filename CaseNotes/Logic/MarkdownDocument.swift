@@ -32,6 +32,15 @@ struct MarkdownDocument: Equatable {
         case blockQuote(AttributedString)
         case codeBlock(language: String?, code: String)
         case thematicBreak
+
+        /// One of the note's own files, placed in the body by identity.
+        ///
+        /// The block carries the attachment's identity and nothing else. What
+        /// the file is called, what kind of file it is, and whether its bytes
+        /// are still there are answered where a block becomes pixels, so a
+        /// rename never reaches the parse and a missing file never costs the
+        /// note the rest of its structure. See ``InlineAttachmentMarker``.
+        case attachment(id: UUID)
     }
 
     /// One region of a note body, as read mode divides it.
@@ -92,6 +101,21 @@ struct MarkdownDocument: Equatable {
     /// - Returns: The blocks the source describes, or the source as one plain
     ///   paragraph when even a partial parse is impossible.
     private static func parse(_ source: String) -> [Block] {
+        let parsed = parsedBlocks(of: source)
+
+        guard InlineAttachmentMarker.mayAppear(in: source) else {
+            return parsed
+        }
+
+        return withInlineAttachments(in: source, parsedAs: parsed) ?? parsed
+    }
+
+    /// Parses a source string into blocks, with every attachment marker left as
+    /// the paragraph of text Foundation reads it as.
+    ///
+    /// - Parameter source: The raw note body, or a piece of one.
+    /// - Returns: The blocks the source describes.
+    private static func parsedBlocks(of source: String) -> [Block] {
         guard !source.isEmpty else {
             return []
         }
@@ -108,6 +132,102 @@ struct MarkdownDocument: Equatable {
         }
 
         return blocks(from: attributed)
+    }
+
+    /// Replaces the paragraphs that are attachment markers with attachment
+    /// blocks, but only where the source proves they are blocks of their own.
+    ///
+    /// The syntax is invisible to Foundation, which reads a marker as ordinary
+    /// text and discards the difference between one the user wrote and one they
+    /// escaped. Rather than guessing from the parsed text, each candidate line
+    /// is cut out of the source and the piece before it is parsed on its own. A
+    /// candidate is accepted only when that piece and the marker line, parsed
+    /// separately, are exactly the blocks the whole body already has at that
+    /// position. That is the same argument ``MarkdownSourceMap`` makes about
+    /// boundaries, for the same reason: Foundation stays the authority on what
+    /// the Markdown means and this only decides where a placement is real.
+    ///
+    /// Everything a marker must not activate inside falls out of it. A marker
+    /// in a fenced or indented code block does not parse to a paragraph, and
+    /// cutting the source there produces blocks the body does not have. A
+    /// marker in inline code or behind a backslash is not a candidate line at
+    /// all, because the line holds a character besides the marker. A marker on
+    /// the line after a paragraph is a continuation of that paragraph, and
+    /// splitting it would produce two blocks where the body has one.
+    ///
+    /// A candidate that is refused is left in the text around it rather than
+    /// abandoning the whole pass, so a note can hold a real placement and a
+    /// marker written inside a code fence at the same time.
+    ///
+    /// - Parameters:
+    ///   - source: The raw note body.
+    ///   - expected: The blocks the whole body parsed to.
+    /// - Returns: The blocks with placements resolved, or `nil` when the pieces
+    ///   no longer add up to the parse, in which case the markers stay literal.
+    private static func withInlineAttachments(
+        in source: String,
+        parsedAs expected: [Block]
+    ) -> [Block]? {
+        let candidates = InlineAttachmentMarker.candidateLines(in: source)
+
+        guard !candidates.isEmpty else {
+            return nil
+        }
+
+        var resolved: [Block] = []
+        var consumed = 0
+        var cursor = source.startIndex
+
+        for candidate in candidates where candidate.range.lowerBound >= cursor {
+            let line = source[candidate.range]
+            let before = parsedBlocks(of: String(source[cursor..<candidate.range.lowerBound]))
+            let marker = parsedBlocks(of: String(line))
+
+            guard isParagraph(marker, spelling: line),
+                  consumed + before.count + 1 <= expected.count,
+                  Array(expected[consumed..<(consumed + before.count)]) == before,
+                  expected[consumed + before.count] == marker[0]
+            else {
+                continue
+            }
+
+            resolved.append(contentsOf: before)
+            resolved.append(.attachment(id: candidate.id))
+            consumed += before.count + 1
+            cursor = candidate.range.upperBound
+        }
+
+        let after = parsedBlocks(of: String(source[cursor...]))
+
+        guard consumed + after.count == expected.count,
+              Array(expected[consumed...]) == after
+        else {
+            return nil
+        }
+
+        resolved.append(contentsOf: after)
+
+        return resolved
+    }
+
+    /// Whether a marker line parsed into one plain paragraph saying exactly
+    /// what the line says.
+    ///
+    /// This is what tells a marker apart from the same characters indented into
+    /// a code block, which parses to code rather than to a paragraph. Comparing
+    /// against the line rather than against a canonical spelling is deliberate,
+    /// so an identity written in lower case is recognized the same way.
+    ///
+    /// - Parameters:
+    ///   - blocks: What the candidate line parsed to on its own.
+    ///   - line: The candidate line, with any indentation and terminator.
+    /// - Returns: `true` when the line is an ordinary paragraph of marker text.
+    private static func isParagraph(_ blocks: [Block], spelling line: Substring) -> Bool {
+        guard blocks.count == 1, case let .paragraph(text) = blocks[0] else {
+            return false
+        }
+
+        return String(text.characters) == line.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Divides parsed blocks into the regions read mode can fold.
@@ -172,7 +292,7 @@ struct MarkdownDocument: Equatable {
                 String(text.characters)
             case let .codeBlock(_, code):
                 code
-            case .thematicBreak:
+            case .thematicBreak, .attachment:
                 nil
             }
         }

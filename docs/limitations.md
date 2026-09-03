@@ -26,8 +26,23 @@ explicitly addresses them:
   text, and an attachment is matched by nothing at all, not even its file name.
 - Attachments are not versioned. History records authored text, so removing a
   file cannot be undone by restoring an older version.
-- Attachments are shown in the order they were added and cannot be reordered or
-  renamed, and there is no drag and drop.
+- The attachments list is shown in the order files were added and cannot be
+  reordered or renamed, and there is no drag and drop.
+- A file placed inside the writing is a document block. It cannot float, sit
+  beside text, be resized, or have text wrap around it, and it is moved a block
+  at a time with Move Up and Move Down rather than by dragging.
+- A placement must be a block of its own. A reference written on the line
+  directly under a paragraph reads as part of that paragraph and stays literal
+  text, as does one inside code or behind a backslash.
+- Placement references are CaseNotes syntax. Another Markdown tool shows them as
+  the literal text they are, and an exported Markdown file therefore carries
+  references to files it does not carry.
+- A placed image is not included in a PDF export. A PDF carries the note's text
+  and its drawing, and a placement is omitted rather than drawn as a reference
+  to a file the reader does not have.
+- Deleting a file the writing still refers to leaves the reference in place,
+  reading as an unavailable attachment. CaseNotes does not rewrite authored text
+  to tidy it up, so removing the reference is the author's own edit.
 - An attachment is previewed through the system document viewer. CaseNotes
   renders no document format itself and cannot edit or annotate one.
 - A file whose bytes have gone missing is reported as missing rather than

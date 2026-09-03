@@ -33,6 +33,8 @@ interface gate without accounts, analytics, or cloud services.
 - Nested folders with safe, note-preserving organization
 - One optional PencilKit drawing per note
 - Local file attachments per note, previewed with Quick Look
+- Attachments placed inside a note's Markdown, with images drawn in place and
+  blocks moved up or down
 - Copy, share, Markdown file export, and PDF export of the rendered note
   including its drawing
 - LocalAuthentication app lock and an immediate app-switcher privacy shield

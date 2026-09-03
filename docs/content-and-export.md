@@ -124,6 +124,16 @@ points at rather than part of what the note says, and concatenating a PDF or a
 Word file into an export would produce something the user did not write. There
 is no archive format that carries a note and its files together.
 
+A file placed inside the writing follows the same rule, and the two formats
+differ in how. A Markdown export is the authored source, so the reference
+travels verbatim along with everything else the note holds; it will read as
+plain text wherever the file is opened, since the syntax is CaseNotes's own. A
+PDF is a rendered document and a placement is left out of it entirely, because a
+PDF carries no file the reader can open and drawing a reference to a document
+they do not have would say less than saying nothing. Rendering placed images
+into an exported PDF would be a worthwhile enhancement and is deliberately not
+part of this one.
+
 ### Markdown file
 
 The generated document contains:

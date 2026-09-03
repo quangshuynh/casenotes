@@ -242,6 +242,43 @@ A note can keep local files. These rules are behavior, and tests protect them:
   attachment into an export.
 - Previewing is Quick Look. Do not write a renderer for any attached format.
 
+## Inline attachment invariants
+
+A note's own file can be placed inside its Markdown. These rules are behavior:
+
+- A placement is a reference, never a copy or a second pipeline. The body
+  records the attachment's identity and nothing else, so a rename, a new display
+  name, or a moved container leaves every placement valid, and the same file may
+  be placed as many times as the author likes.
+- The syntax is not Markdown and never changes what a note parses to.
+  `InlineAttachmentMarker` owns it, and a line that holds anything besides the
+  reference is prose.
+- Whether a candidate line is a placement is decided by the parse, in
+  `MarkdownDocument`, the same way `MarkdownSourceMap` decides a boundary: the
+  pieces around it, parsed alone, must be exactly the blocks the whole body
+  already has there. Never match a marker out of the parsed text alone, which
+  cannot tell an escaped reference from a written one.
+- A reference in fenced code, indented code, inline code, or behind a backslash
+  is literal text, and so is one that would only be a paragraph continuation. A
+  refused candidate never costs a real placement elsewhere in the same note.
+- Placing, moving, and removing rewrite the body through
+  `MarkdownSourceMap.replacing(_:utf16Range:with:)` and touch nothing else. No
+  Markdown is normalized, reflowed, or trimmed, and a separator that was above a
+  moved block stays where it was.
+- A placement is a document block. It is placed at the boundary of the block the
+  caret is in, moved a block at a time, and never floats, wraps, or resizes.
+- Taking a placement out of the body is not deleting a file, and deleting a file
+  never rewrites the body. A reference to a file the note no longer holds is
+  shown as unavailable with the author's text left alone.
+- Everything about drafts, timestamps, and history follows from the body having
+  changed. There is no separate rule, no new stored state, and no `@Model`
+  change: placement is authored text.
+- Nothing in a reading or preview path may reach the file system per redraw.
+  Resolution is built when the list of files changes, and a placed image is
+  decoded off the main actor at a bounded size and cached by identity.
+- Markdown export carries references verbatim because they are the source. A PDF
+  omits them, which is the same rule attachments have always had.
+
 ## Version history invariants
 
 Notes keep previous authored states as `NoteRevision` records. These rules are

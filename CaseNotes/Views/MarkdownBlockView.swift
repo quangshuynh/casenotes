@@ -24,7 +24,8 @@ struct MarkdownThematicRule: View {
 /// This is the only place a block becomes pixels. ``MarkdownText`` renders a
 /// note through it and so does live preview, which is what keeps a paragraph
 /// looking the same the instant the caret leaves it as it did while it was
-/// merely being read.
+/// merely being read. A placed attachment is a block like any other, and the
+/// note's files reach it through ``EnvironmentValues/inlineAttachments``.
 struct MarkdownBlockView: View {
     let block: MarkdownDocument.Block
 
@@ -87,6 +88,9 @@ struct MarkdownBlockView: View {
         case .thematicBreak:
             MarkdownThematicRule()
                 .padding(.vertical, Theme.Spacing.xSmall)
+
+        case let .attachment(id):
+            InlineAttachmentBlockView(id: id)
         }
     }
 

@@ -17,6 +17,11 @@ import SwiftUI
 /// staging rather than into the note's own storage, and removing one only takes
 /// it out of the draft's list, so the note keeps every file it had until the
 /// caller saves. Abandoning the edit deletes whatever this session staged.
+///
+/// Placing a file inside the writing follows the rule too, and needs no rule of
+/// its own: a placement is a marker in the draft's body, so it is authored text
+/// that Save keeps and Cancel discards, and the file it names is the same file
+/// the attachments list is holding.
 struct NoteEditorView: View {
     /// Whether the editor is composing a new note or revising a stored one.
     ///
@@ -52,6 +57,40 @@ struct NoteEditorView: View {
     @State private var isConfirmingDiscard = false
     @State private var isImportingAttachment = false
     @State private var attachmentErrorMessage: String?
+
+    /// Whether the file being imported is also going to be placed in the text.
+    @State private var isPlacingImportedAttachment = false
+
+    /// Whether the sheet that chooses a file to place is presented.
+    @State private var isChoosingAttachmentToPlace = false
+
+    /// Set while the picker is closing so the importer is raised once it has
+    /// gone. Two presentations cannot be raised in the same event.
+    @State private var isImportRequestedFromPicker = false
+
+    /// The note's files, as the placements in the body resolve them.
+    ///
+    /// Held in state and rebuilt only when the list of files changes, for two
+    /// reasons. It asks the file system whether each file is still there, and
+    /// it is handed to the body through the environment: a value rebuilt on
+    /// every update would invalidate every rendered block on every keystroke,
+    /// which is the cost this editor already learned not to pay.
+    @State private var inlineAttachments = InlineAttachmentContext()
+
+    /// The file a placement opened in Quick Look.
+    @State private var placementPreview: PreviewedAttachment?
+
+    /// Where the body is being edited, so a placement lands where the caret is.
+    ///
+    /// A reference type held in state, like the Markdown caches: it is written
+    /// on every keystroke and read only when a file is chosen, so it must not
+    /// cause a redraw.
+    @State private var bodyCaret = MarkdownBodyCaret()
+
+    /// The selection in Source mode, which is the only way that field reports
+    /// where the caret is.
+    @State private var sourceSelection: TextSelection?
+
     @FocusState private var focusedField: Field?
     @Environment(\.dismiss) private var dismiss
 
@@ -152,6 +191,17 @@ struct NoteEditorView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isChoosingAttachmentToPlace = true
+                } label: {
+                    Image(systemName: "paperclip")
+                }
+                .disabled(!markdownMode.isEditable)
+                .accessibilityLabel("Insert Attachment")
+                .accessibilityHint("Places one of the note's files at the cursor")
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
                 markdownModePicker
             }
 
@@ -194,7 +244,29 @@ struct NoteEditorView: View {
         } message: { message in
             Text(message)
         }
+        .sheet(
+            isPresented: $isChoosingAttachmentToPlace,
+            onDismiss: raiseImporterIfRequested
+        ) {
+            InlineAttachmentPickerView(
+                attachments: draft.attachments,
+                onPick: place(attachment:),
+                onImport: { isImportRequestedFromPicker = true }
+            )
+        }
+        .fullScreenCover(item: $placementPreview) { preview in
+            QuickLookPreview(url: preview.url, filename: preview.filename) {
+                placementPreview = nil
+            }
+            .ignoresSafeArea()
+        }
+        .environment(\.inlineAttachments, inlineAttachments)
+        .onChange(of: draft.attachments) {
+            refreshInlineAttachments()
+        }
         .task {
+            refreshInlineAttachments()
+
             if mode == .create {
                 focusedField = .title
             }
@@ -226,17 +298,117 @@ struct NoteEditorView: View {
             }
 
         case .livePreview:
-            MarkdownLivePreview(source: $draft.body)
+            MarkdownLivePreview(source: $draft.body, bodyCaret: bodyCaret)
                 .padding(.vertical, Theme.Spacing.xSmall)
 
         case .source:
-            TextEditor(text: $draft.body)
+            TextEditor(text: $draft.body, selection: $sourceSelection)
                 .font(.body)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .scrollContentBackground(.hidden)
                 .focused($focusedField, equals: .body)
                 .frame(minHeight: 220)
                 .accessibilityLabel("Note Body")
+                .onChange(of: sourceSelection) {
+                    recordSourceCaret()
+                }
+        }
+    }
+
+    // MARK: Placements
+
+    /// Resolves the draft's files again after the list changed.
+    ///
+    /// A staged file resolves to its copy in staging, so a document attached a
+    /// moment ago renders in the body straight away, and its identity is
+    /// already the one the saved attachment will carry.
+    ///
+    /// The preview is reached through the binding rather than through a
+    /// captured copy of this view, so the stored action stays valid however
+    /// many times the editor is re-evaluated around it.
+    private func refreshInlineAttachments() {
+        let preview = $placementPreview
+
+        inlineAttachments = InlineAttachmentContext(
+            source: InlineAttachmentSource(
+                draftAttachments: draft.attachments,
+                store: attachmentStore
+            )
+        ) { attachment in
+            guard let url = attachment.url else {
+                return
+            }
+
+            preview.wrappedValue = PreviewedAttachment(
+                id: attachment.id,
+                url: url,
+                filename: attachment.descriptor.originalFilename
+            )
+        }
+    }
+
+    /// Writes a marker for one of the note's files at the cursor.
+    ///
+    /// The body is the only thing that changes. Nothing is copied, no record is
+    /// written, and the file itself is exactly where it was, which is why this
+    /// needs no more ceremony than typing the same characters would.
+    ///
+    /// - Parameter id: The attachment to place.
+    private func place(attachment id: UUID) {
+        let insertion = InlineAttachments.inserting(
+            id,
+            into: draft.body,
+            atUTF16Offset: bodyCaret.utf16Offset ?? draft.body.utf16.count
+        )
+
+        draft.body = insertion.source
+        bodyCaret.utf16Offset = insertion.caretUTF16Offset
+    }
+
+    /// Raises the file importer once the picker has finished closing.
+    ///
+    /// The wait for the next turn of the run loop is load bearing. Asking for
+    /// the importer inside the dismissal itself does nothing at all: the sheet
+    /// is still the presented view as far as the presenting controller is
+    /// concerned, so the second presentation is dropped without a word. That
+    /// was found by tapping the button and watching nothing happen.
+    private func raiseImporterIfRequested() {
+        guard isImportRequestedFromPicker else {
+            return
+        }
+
+        isImportRequestedFromPicker = false
+        isPlacingImportedAttachment = true
+
+        DispatchQueue.main.async {
+            isImportingAttachment = true
+        }
+    }
+
+    /// Notes where the caret is in Source mode.
+    ///
+    /// `TextEditor` reports a selection rather than an offset, and an offset is
+    /// what a placement needs, so the two are converted here. A selection that
+    /// spans text is treated as its start, because an attachment is inserted
+    /// rather than something the selection is replaced by.
+    private func recordSourceCaret() {
+        guard let sourceSelection else {
+            return
+        }
+
+        switch sourceSelection.indices {
+        case let .selection(range):
+            bodyCaret.utf16Offset = range.lowerBound.utf16Offset(in: draft.body)
+
+        case let .multiSelection(ranges):
+            guard let first = ranges.ranges.first else {
+                return
+            }
+
+            bodyCaret.utf16Offset = first.lowerBound.utf16Offset(in: draft.body)
+
+        @unknown default:
+            return
         }
     }
 
@@ -287,10 +459,17 @@ struct NoteEditorView: View {
             } label: {
                 Label("Add Attachment", systemImage: "paperclip")
             }
+
+            Button {
+                isChoosingAttachmentToPlace = true
+            } label: {
+                Label("Insert Into Note", systemImage: "text.append")
+            }
+            .disabled(!markdownMode.isEditable)
         } header: {
             Text("Attachments")
         } footer: {
-            Text("Files are copied into CaseNotes and saved with the note. They are not included in Markdown or PDF exports.")
+            Text("Files are copied into CaseNotes and saved with the note. A file can also be placed in the writing, which adds a reference to the Markdown rather than a copy of the file.")
         }
         .listRowBackground(Theme.Colors.surface)
     }
@@ -301,8 +480,16 @@ struct NoteEditorView: View {
     /// does not cost the others. A cancelled picker is not a failure and is
     /// deliberately silent.
     ///
+    /// A file imported in order to be placed is staged first and placed second,
+    /// through the same two steps as a file that was already attached. There is
+    /// one import path and one attachment list, so a placement never becomes a
+    /// second way for a file to reach the store.
+    ///
     /// - Parameter result: What the file importer produced.
     private func importAttachments(_ result: Result<[URL], Error>) {
+        let isPlacing = isPlacingImportedAttachment
+        isPlacingImportedAttachment = false
+
         switch result {
         case let .success(urls):
             var failures: [String] = []
@@ -311,6 +498,10 @@ struct NoteEditorView: View {
                 do {
                     let staged = try attachmentStore.stage(contentsOf: url)
                     draft.attachments.append(DraftAttachment(staged: staged))
+
+                    if isPlacing {
+                        place(attachment: staged.id)
+                    }
                 } catch {
                     failures.append(error.localizedDescription)
                 }
@@ -335,6 +526,12 @@ struct NoteEditorView: View {
     /// to it any more. A file the note already has is only dropped from the
     /// list: it stays on disk and stays attached until the user saves, which is
     /// what lets Cancel put it back.
+    ///
+    /// Any place the body refers to the file is deliberately left alone. The
+    /// writing is the author's, and rewriting it behind them to tidy up a
+    /// reference would be a worse trade than showing the reference has gone
+    /// stale, which is what the body does. Cancel restores both together,
+    /// because both are the draft.
     ///
     /// - Parameter offsets: Positions within the draft's attachment list.
     private func removeAttachments(at offsets: IndexSet) {

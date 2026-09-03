@@ -162,6 +162,38 @@ reaches the file system only through the store. Constraints when touching them:
 - One bad attachment must never cost the note. Missing bytes are a row that says
   so, not a blank screen.
 
+## Inline attachments
+
+A note's own file can be placed inside its Markdown. `InlineAttachmentMarker`
+owns the syntax, `InlineAttachments` owns the body rewrites, and
+`InlineAttachmentSource` answers what a reference refers to. Constraints when
+touching them:
+
+- A placement is a reference by identity. Never write a file name, a path, or a
+  display name into the body, and never copy a file to place it.
+- Never decide a placement from the parsed text. Foundation discards the
+  difference between a written reference and an escaped one, so a candidate line
+  is proved against the whole-document parse in `MarkdownDocument`, exactly as
+  `MarkdownSourceMap` proves a boundary.
+- Do not add a second parser, and do not split the source on newlines. A refused
+  candidate stays literal text and must not disable the placements around it.
+- Rewrites go through the source map's span replacement. Nothing is normalized,
+  trimmed, or reflowed, and a fence is never cut open by an insertion.
+- Blocks, not layout. No floating, no wrapping, no resize handles, no arbitrary
+  positions. Movement is a block at a time and is offered as named controls so
+  it works for VoiceOver and Switch Control, not only as a drag.
+- Removing a reference and deleting a file are different actions, and only the
+  second one destroys anything. Never rewrite authored text to tidy up a stale
+  reference.
+- Placement is authored text, so draft, timestamp, and history semantics follow
+  with no new rule and no schema change.
+- The keystroke path stays clean: resolution is rebuilt when the list of files
+  changes rather than per redraw, the environment value handed to the rendered
+  body is state rather than a value recomputed each update, and images are
+  decoded off the main actor at a bounded size and cached by identity.
+- A form row routes plain buttons in it to one target, so controls inside live
+  preview are borderless. That was found by tapping them.
+
 ## PDF export
 
 `NotePDFRenderer` in `Logic/` builds the document; views trigger an export and

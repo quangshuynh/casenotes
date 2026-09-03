@@ -37,6 +37,23 @@ struct MarkdownCaretRequest: Equatable {
     let target: Target
 }
 
+/// Where the note body was last being edited, shared without redrawing.
+///
+/// A reference type on purpose. The caret moves on every keystroke and on every
+/// tap, and the one thing that reads it, the action that places an attachment,
+/// runs long after the movement that set it. Holding it in SwiftUI state would
+/// therefore redraw the whole editor for a value nothing on screen depends on,
+/// on the one path this app has already lost characters to.
+///
+/// It is deliberately not cleared when editing stops. Choosing a file dismisses
+/// the keyboard, so the position an attachment is placed at is always one the
+/// editor stopped tracking a moment earlier.
+final class MarkdownBodyCaret {
+    /// The caret's place in the body, in UTF-16 code units, or `nil` when the
+    /// body has not been edited yet.
+    var utf16Offset: Int?
+}
+
 /// A reshaping of the text a region editor holds.
 ///
 /// A region can stop being the right unit while it is being typed into: a blank

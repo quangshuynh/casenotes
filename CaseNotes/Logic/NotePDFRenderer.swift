@@ -344,6 +344,16 @@ enum NotePDFRenderer {
                 writer.space(Metrics.breakSpacing)
                 writer.drawRule(color: Palette.rule)
                 writer.advance(Metrics.breakSpacing)
+
+            case .attachment:
+                // A placed file is deliberately absent, which is the same rule
+                // exports have always had: a note leaves the app as authored
+                // content, and its files do not travel with it. Drawing a
+                // reference to a document the reader has no copy of would be
+                // worse than leaving it out, and embedding the document itself
+                // is a different feature with a different set of decisions
+                // behind it. The limitation is documented rather than hidden.
+                break
             }
 
             previous = block

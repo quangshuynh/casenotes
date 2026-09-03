@@ -51,6 +51,14 @@ label, and it is not offered as something to open. The row keeps a full-height
 target, its symbol column scales with the text beside it, and the type and size
 wrap onto a second line at accessibility text sizes instead of truncating.
 
+A file placed inside the writing is spoken the same way, with an image saying
+that it is one before naming the file, its kind, and its size. The controls under
+a placement in Live Preview are named in words rather than by their arrows: Move
+Attachment Up, Move Attachment Down, and Remove Attachment From Note Text, which
+carries a hint saying the file stays attached. Each keeps a full target at every
+text size. A placement naming a file the note no longer holds says so in words
+rather than by a symbol or a color, and it is not offered as something to open.
+
 An exported PDF keeps the note's text as text rather than flattening the page
 into one image, which is what lets a reader select it, search it, and print it
 at full quality. What a PDF reader then does with that text is the reader's
