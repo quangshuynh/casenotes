@@ -140,9 +140,47 @@ Read mode folds a note at its thematic breaks. These are behavior:
 - Every spelling the parser accepts as a break folds alike.
 - Collapsing must not touch `updatedAt`, write a `NoteRevision`, or reach the
   model at all.
-- The editor always exposes the complete source, so native selection and Select
-  All keep covering the whole note.
+- Source mode exposes the complete body, so native selection and Select All
+  still cover the whole note. Live Preview draws a break as a plain rule with no
+  control, so folding never reaches an editable mode.
 - Copy, share, and export always use the full body.
+
+## Markdown mode invariants
+
+The editor shows Markdown as Reading, Live Preview, or Source. These are
+behavior:
+
+- The stored Markdown source is the single source of truth in all three modes.
+  There is no second editable copy, no rich-text storage, and nothing is
+  normalized, reflowed, or reformatted on the way in or out.
+- A mode is ephemeral view state. It is not persisted, is not part of
+  `NoteDraft`, and cannot move `updatedAt` or write a `NoteRevision`. Switching
+  modes rewrites no text. Do not add a preference store for it.
+- Live Preview edits the draft, exactly as Source does. Save applies the draft,
+  Cancel discards it, and there is no autosave.
+- An active region comes from `MarkdownSourceMap`, never from splitting the
+  source on newlines. A boundary is accepted only once the text between two
+  candidates parses on its own into exactly the blocks the whole-document parse
+  produced there, which is what keeps a fenced block, a block quote, an indented
+  code block, a nested list item, and a setext heading whole.
+- Never write a second Markdown parser. `MarkdownSourceMap` proposes boundaries
+  and Foundation decides what they mean.
+- An edit is written back into the span its region owns through
+  `MarkdownSourceMap.replacing(_:utf16Range:with:)`. Every character outside it
+  is carried through untouched.
+- Offsets are UTF-16 code units, never character counts, because they are
+  exchanged with a UIKit text view and have to survive emoji.
+- Dividing a whole note is for opening one and for entering a region. A
+  keystroke re-divides only the span it touched. When a region stops being the
+  right unit mid-keystroke, the text view is reshaped in the same event through
+  `MarkdownRegionReshape` rather than pushed new text on a later redraw, which
+  is what stops fast typing losing characters.
+- Folding is read-mode presentation and stays out of Live Preview, which draws a
+  thematic break as a plain rule with no control.
+- The UIKit bridge stays one text view holding one region's plain source. It is
+  not a rich-text editor: no attribute is written into its storage, and
+  autocorrection and smart punctuation stay at the system defaults so both
+  editable modes behave alike.
 
 ## Export invariants
 

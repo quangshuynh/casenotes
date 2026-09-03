@@ -17,6 +17,59 @@ the renderer presents the source as plain text so content remains readable.
 thematic break carrying a collapse control, and inline
 code](screenshots/note-markdown-dark.png){ width="300" }
 
+## The three Markdown modes
+
+The note screen is Reading: the stored body, fully rendered, with nothing to
+type into. The editor offers all three modes from one menu in its toolbar, and
+the mode names the view rather than only tinting it.
+
+- **Reading** renders the draft through the same view the note screen uses,
+  collapsible sections included, and offers no way to type.
+- **Live Preview** renders the draft and exposes the Markdown source of the one
+  region holding the cursor. It is the mode the editor opens in.
+- **Source** is the complete Markdown source in one field, which is the editor
+  this app has always had.
+
+Switching between them changes what is on screen and nothing else. No text is
+rewritten, the draft is untouched, the note's edit time does not move, and no
+version is recorded. The mode is not remembered between edits: the app stores no
+preferences, and a display choice is not a reason to start.
+
+## Live Preview
+
+Live Preview divides the body into regions and renders all of them except the
+one the cursor is in, which is shown as its own Markdown source in a field of
+its own. Moving the cursor renders the region being left and opens the region
+being entered. Tapping rendered content enters the region under the tap and puts
+the cursor near the words that were touched.
+
+A region is the smallest span of source that parses on its own into exactly the
+blocks the whole note parses into at that position. That is checked against
+Foundation's parser rather than assumed, which is why a fenced code block, a
+block quote, a multiline paragraph, an indented code block split by a blank
+line, a nested list item, and a setext heading each travel whole rather than
+being cut at a line that merely looks like a boundary. A thematic break is a
+region of its own, so entering one edits the break and not the paragraph beside
+it.
+
+The stored Markdown stays the single source of truth. An edit is written back
+into the span its region owns and every other character is carried through
+untouched, so nothing is normalized, reflowed, or reformatted. Malformed
+Markdown stays editable and keeps its own region.
+
+Cursor placement is answered by real text layout rather than by counting
+characters, so it survives Dynamic Type, wrapping, emoji, and non-Latin text.
+It is close rather than exact: the source of a region shows syntax the rendered
+form hides, so a tap late in a line that contains `**` or a link can land a
+character or two from the glyph that was touched. It always lands in the right
+region and on the right line.
+
+Two limits are worth stating. A selection cannot span two regions, because each
+region is its own field; Source mode is there for a change that has to reach
+across the whole note. And a region grows to hold what is typed into it, so
+writing several blocks without moving the cursor leaves them all as source until
+the cursor moves.
+
 ## Collapsible sections in read mode
 
 A thematic break divides a note into regions that read mode can fold. Each break
@@ -34,7 +87,9 @@ text stays the setext heading Markdown says it is.
 Folding is presentation only:
 
 - The stored Markdown is never rewritten, and no marker is added to it.
-- The editor always shows the complete source, including every break.
+- Source mode shows the complete body, including every break. Live Preview
+  renders a break as a plain rule and offers no collapse control, so folding is
+  read-mode presentation and never mixes with editing.
 - Collapsing does not change the note's edit time and records no version.
 - Copy, share, and file export always use the whole body.
 - Search reads the stored body, so collapsed text still matches.

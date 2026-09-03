@@ -39,6 +39,21 @@ explicitly addresses them:
   same unencrypted store as the notes, is not tamper evident, and is not
   pruned, so a heavily edited note keeps every previous version.
 - Previous versions can be read and restored but not compared side by side.
+- The Markdown mode is view state and is not remembered between edits. The
+  editor opens in Live Preview every time, because the app stores no preferences
+  and a display choice was not a reason to add any.
+- Live Preview edits one region at a time, so a selection cannot span two
+  regions and Select All covers the region rather than the note. Source mode
+  shows the whole body in one field for any change that has to reach across it.
+- A Live Preview region grows to hold what is typed into it, so writing several
+  blocks without moving the cursor leaves them all showing source until the
+  cursor moves.
+- Tapping rendered text in Live Preview lands in the right region and on the
+  right line, but not always on the exact character: the source shows syntax the
+  rendered form hides, so a tap late in a line carrying `**` or a link can be a
+  character or two out.
+- Undo in Live Preview covers the region being edited, and is cleared when the
+  region being edited changes.
 - Collapsing a section is read-mode state only. It is not saved, so every
   section is expanded again the next time a note is opened, and folding is
   driven by thematic breaks rather than by headings or nesting.

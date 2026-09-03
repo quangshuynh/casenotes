@@ -11,6 +11,14 @@ Editing uses an in-memory draft. Save applies the draft, while Cancel discards
 it. Authored content changes update `updatedAt`; opening, closing, or moving a
 note between folders does not.
 
+The editor shows Markdown in one of three modes, chosen from a menu in its
+toolbar: Reading, Live Preview, and Source. It opens in Live Preview, which
+renders the note as it is written and exposes the Markdown source of the region
+holding the cursor. Switching modes rewrites nothing, moves no timestamp, and
+records no version, and there is no autosave: Save and Cancel mean exactly what
+they always have. See [Content and Export](content-and-export.md) for how a
+region is decided and what the cursor does.
+
 The list supports title and body substring search over the notes of the scope
 being browsed, Last Updated and Date Created ordering, and pinned-first grouping
 within either order. Searching inside a folder covers the notes filed in that
@@ -34,7 +42,7 @@ collapsing one leaves the rest of the note alone, and anything written above the
 first divider always stays visible.
 
 Collapsing changes what is on screen and nothing else. The stored Markdown is
-untouched, the editor still shows every character including the breaks, the
+untouched, Source mode still shows every character including the breaks, the
 note's edit time does not move, no version is recorded, and copying, sharing, or
 exporting still carries the whole note. Sections start expanded every time a
 note is opened, and the collapsed state is not saved.

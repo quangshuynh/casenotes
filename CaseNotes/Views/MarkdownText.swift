@@ -70,7 +70,7 @@ struct MarkdownText: View {
                 // Two breaks in a row, or a break ending the note. The divider
                 // is authored, so it still renders, but there is nothing under
                 // it to fold and therefore no control to offer.
-                thematicRule
+                MarkdownThematicRule()
                     .padding(.vertical, Theme.Spacing.medium)
             } else {
                 sectionDivider(for: section)
@@ -78,16 +78,7 @@ struct MarkdownText: View {
         }
 
         if !collapsedSections.contains(section.id) {
-            ForEach(Array(section.blocks.enumerated()), id: \.offset) { index, block in
-                blockView(for: block)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(
-                        .top,
-                        index == 0
-                            ? 0
-                            : spacingAbove(block, previous: section.blocks[index - 1])
-                    )
-            }
+            MarkdownBlockStack(blocks: section.blocks)
         }
     }
 
@@ -118,7 +109,7 @@ struct MarkdownText: View {
             }
         } label: {
             HStack(spacing: Theme.Spacing.medium) {
-                thematicRule
+                MarkdownThematicRule()
 
                 if isCollapsed, !dynamicTypeSize.isAccessibilitySize {
                     Text("Section collapsed")
@@ -139,149 +130,6 @@ struct MarkdownText: View {
         .buttonStyle(.plain)
         .accessibilityLabel(isCollapsed ? "Expand section" : "Collapse section")
         .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
-    }
-
-    /// The hairline a thematic break draws.
-    private var thematicRule: some View {
-        Rectangle()
-            .fill(Theme.Colors.separator)
-            .frame(height: 1)
-    }
-
-    /// The gap to leave above a block.
-    ///
-    /// Consecutive list items sit closer together than separate blocks do, so a
-    /// list reads as one group rather than as a stack of loose paragraphs.
-    ///
-    /// - Parameters:
-    ///   - block: The block about to be laid out.
-    ///   - previous: The block above it within the same region.
-    /// - Returns: The leading padding in points.
-    private func spacingAbove(
-        _ block: MarkdownDocument.Block,
-        previous: MarkdownDocument.Block
-    ) -> CGFloat {
-        if case .listItem = block, case .listItem = previous {
-            return Theme.Spacing.small
-        }
-
-        return Theme.Spacing.medium
-    }
-
-    /// Lays out one parsed block.
-    ///
-    /// - Parameter block: The block to render.
-    /// - Returns: The view for that block, styled for reading.
-    @ViewBuilder
-    private func blockView(for block: MarkdownDocument.Block) -> some View {
-        switch block {
-        case let .paragraph(text):
-            Text(styled(text, base: .body))
-                .lineSpacing(Theme.Spacing.xSmall)
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .textSelection(.enabled)
-
-        case let .heading(level, text):
-            Text(styled(text, base: headingFont(for: level)))
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .padding(.top, Theme.Spacing.xSmall)
-                .textSelection(.enabled)
-                .accessibilityAddTraits(.isHeader)
-
-        case let .listItem(ordinal, depth, text):
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
-                Text(ordinal.map { "\($0)." } ?? "\u{2022}")
-                    .font(.body)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.Colors.accent)
-
-                Text(styled(text, base: .body))
-                    .lineSpacing(Theme.Spacing.xSmall)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-            }
-            .padding(.leading, CGFloat(depth) * Theme.Spacing.large)
-            .textSelection(.enabled)
-
-        case let .blockQuote(text):
-            HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-                Capsule()
-                    .fill(Theme.Colors.accent)
-                    .frame(width: 3)
-
-                Text(styled(text, base: .body))
-                    .italic()
-                    .lineSpacing(Theme.Spacing.xSmall)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .textSelection(.enabled)
-
-        case let .codeBlock(language, code):
-            ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
-                    .font(.system(.callout, design: .monospaced))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .textSelection(.enabled)
-            }
-            .padding(Theme.Spacing.medium)
-            .background(Theme.Colors.surface, in: .rect(cornerRadius: Theme.Radius.small))
-            .accessibilityLabel(
-                language.map { "Code block in \($0)" } ?? "Code block"
-            )
-
-        case .thematicBreak:
-            // Regions consume every break before rendering reaches here, so
-            // this case exists to keep the switch total.
-            thematicRule
-                .padding(.vertical, Theme.Spacing.xSmall)
-        }
-    }
-
-    /// Resolves inline Markdown intent into concrete fonts.
-    ///
-    /// - Parameters:
-    ///   - text: A block's text, still carrying inline presentation intent.
-    ///   - base: The font the block is set in.
-    /// - Returns: The text with a font applied to every run.
-    private func styled(
-        _ text: AttributedString,
-        base: Font
-    ) -> AttributedString {
-        var styled = text
-
-        for run in styled.runs {
-            let intent = run.inlinePresentationIntent ?? []
-            var font = base
-
-            if intent.contains(.code) {
-                font = .system(.callout, design: .monospaced)
-            }
-            if intent.contains(.stronglyEmphasized) {
-                font = font.bold()
-            }
-            if intent.contains(.emphasized) {
-                font = font.italic()
-            }
-
-            styled[run.range].font = font
-        }
-
-        return styled
-    }
-
-    /// Maps a Markdown heading level onto a text style.
-    ///
-    /// Levels beyond three share one style, since notes rarely nest deeper and
-    /// smaller steps stop reading as headings at all.
-    ///
-    /// - Parameter level: The heading level, starting at one.
-    /// - Returns: The font for that level.
-    private func headingFont(for level: Int) -> Font {
-        switch level {
-        case 1: .title2.weight(.semibold)
-        case 2: .title3.weight(.semibold)
-        default: .headline
-        }
     }
 }
 
