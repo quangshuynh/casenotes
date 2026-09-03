@@ -20,10 +20,12 @@ dependency.
 - Create a note or a folder without leaving the library
 - Organize notes into nested folders or leave them Unfiled
 - Render Markdown in a dedicated reading view
+- Write in Reading, Live Preview, or Source, three views of one stored note
 - Read and restore previous versions of a note
 - Attach one PencilKit drawing to a note
 - Keep local files with a note and open them in the system document preview
-- Copy, share, or export Markdown text
+- Place one of those files inside the note's Markdown as a block
+- Copy, share, or export a note as a Markdown file or as a PDF
 - Require device-owner authentication before showing note content
 - Cover the interface immediately outside the active scene phase
 
