@@ -112,14 +112,20 @@ narrow `UITextView` bridge that holds one region's characters, because SwiftUI
 exposes neither the cursor's position nor a way to place it. Dividing a whole
 note costs more than parsing it, so it happens when a note is opened or a region
 is entered, never on a keystroke: an edit re-divides only the span it touched
-and splices the result back into the map.
+and splices the result back into the map. A division that was proved against
+exactly the body on screen is reused rather than made a second time, so opening
+a note and then tapping into a paragraph divides it once instead of twice. A
+division a keystroke repaired locally is never reused that way, because proving
+it again is what settles Markdown that is only half typed.
 
 Markdown parsing is retained in `MarkdownText` state and refreshed only when
 the source changes. Section division happens once with the parse rather than on
 demand, so folding a section costs a redraw and no reparsing. List previews
-parse only an opening fragment instead of an entire long note. Folder scope
-counts are accumulated in one pass, as is the grouping of folders by parent, so
-a screen showing folders issues no fetch per row and counts no descendants.
+parse only an opening fragment instead of an entire long note, and a row
+prepares that preview once for an update rather than once for each place it is
+read. Folder scope counts are accumulated in one pass, as is the grouping of
+folders by parent, so a screen showing folders issues no fetch per row and
+counts no descendants.
 
 The version history list uses the same plain-text preview strategy as the notes
 list, so showing a long history parses no Markdown. A historical body is parsed

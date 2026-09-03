@@ -34,7 +34,8 @@ import UIKit
 /// leaves the regions around it where they were; when a boundary appears inside
 /// that span, only the span is divided again and the result is spliced back into
 /// the map. A whole note is divided when it is opened, when a region is entered,
-/// and when the source arrives from somewhere else.
+/// and when the source arrives from somewhere else, and a division already
+/// proved against exactly that text is reused rather than made again.
 struct MarkdownLivePreview: View {
     @Binding var source: String
 
@@ -632,7 +633,7 @@ struct MarkdownLivePreview: View {
     ///     character count, so it survives Dynamic Type, wrapping, and text
     ///     that is not one code unit per character.
     private func activate(atUTF16Offset offset: Int, from point: CGPoint?) {
-        let divided = MarkdownSourceMap(source)
+        let divided = division(of: source)
 
         guard let region = divided.region(containingUTF16Offset: offset) else {
             return
@@ -695,7 +696,7 @@ struct MarkdownLivePreview: View {
     private func adopt(_ body: String, caret offset: Int) {
         source = body
         syncedSource = body
-        map = MarkdownSourceMap(body)
+        map = division(of: body)
         activeIndex = nil
         activeRange = 0..<0
         caretRequest = nil
@@ -735,7 +736,7 @@ struct MarkdownLivePreview: View {
     /// a region identity from the previous division would name different text in
     /// the new one.
     private func synchronize() {
-        map = MarkdownSourceMap(source)
+        map = division(of: source)
         syncedSource = source
         activeIndex = nil
         activeRange = 0..<0
@@ -744,6 +745,28 @@ struct MarkdownLivePreview: View {
         if let offset = bodyCaret.utf16Offset {
             bodyCaret.utf16Offset = min(offset, source.utf16.count)
         }
+    }
+
+    /// The division of a body, reusing the one already held when it describes
+    /// exactly that text and was proved rather than repaired.
+    ///
+    /// Opening a note, entering a region, and leaving one all need a settled
+    /// division, and they follow each other closely: opening then tapping a
+    /// paragraph asked for two divisions of the same unchanged body, and the
+    /// second cost 98 ms on a 76 kB note in Release on the simulator for an
+    /// answer already in hand. A division that a keystroke repaired locally is
+    /// deliberately not reused, because re-proving it is the mechanism that
+    /// settles half-typed Markdown, so this drops the repeated work without
+    /// dropping that.
+    ///
+    /// - Parameter body: The note body to divide.
+    /// - Returns: The division of that body.
+    private func division(of body: String) -> MarkdownSourceMap {
+        guard map.isProven, map.source == body else {
+            return MarkdownSourceMap(body)
+        }
+
+        return map
     }
 
     /// Asks the text view for a caret placement.

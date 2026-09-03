@@ -175,6 +175,10 @@ behavior:
   right unit mid-keystroke, the text view is reshaped in the same event through
   `MarkdownRegionReshape` rather than pushed new text on a later redraw, which
   is what stops fast typing losing characters.
+- A division already proved against exactly the body on screen is reused rather
+  than made again. `MarkdownSourceMap.isProven` is what keeps that safe: a
+  division a keystroke repaired locally reports that it was not proved and is
+  never reused, so entering a region still settles half-typed Markdown.
 - Folding is read-mode presentation and stays out of Live Preview, which draws a
   thematic break as a plain rule with no control.
 - The UIKit bridge stays one text view holding one region's plain source. It is
