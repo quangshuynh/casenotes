@@ -22,7 +22,7 @@ struct MarkdownDocumentTests {
             String(text.characters)
         case let .codeBlock(_, code):
             code
-        case .thematicBreak, nil:
+        case .thematicBreak, .attachment, nil:
             nil
         }
     }

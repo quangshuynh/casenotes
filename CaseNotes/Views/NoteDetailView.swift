@@ -26,6 +26,20 @@ struct NoteDetailView: View {
     @State private var isDrawing = false
     @State private var isShowingHistory = false
 
+    /// The file a placement in the body opened in Quick Look.
+    ///
+    /// Kept here rather than beside the block that was tapped, so one preview
+    /// is presented over the screen however many placements a note makes.
+    @State private var placementPreview: PreviewedAttachment?
+
+    /// The note's files, as the placements in its body resolve them.
+    ///
+    /// Held in state so reading a note asks the file system about each file
+    /// once rather than on every update, and so the environment the rendered
+    /// body reads does not change underneath it for reasons unrelated to the
+    /// note.
+    @State private var inlineAttachments = InlineAttachmentContext()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
@@ -74,8 +88,47 @@ struct NoteDetailView: View {
         .fullScreenCover(isPresented: $isDrawing) {
             NoteDrawingEditorView(note: note)
         }
+        .fullScreenCover(item: $placementPreview) { preview in
+            QuickLookPreview(url: preview.url, filename: preview.filename) {
+                placementPreview = nil
+            }
+            .ignoresSafeArea()
+        }
         .sheet(isPresented: $isEditing) {
             EditNoteSheet(note: note)
+        }
+        .environment(\.inlineAttachments, inlineAttachments)
+        .onAppear(perform: refreshInlineAttachments)
+        .onChange(of: note.attachments.count, refreshInlineAttachments)
+        .onChange(of: isEditing) {
+            if !isEditing {
+                refreshInlineAttachments()
+            }
+        }
+    }
+
+    /// Resolves what the body's placements refer to, and what opening one does.
+    ///
+    /// Opening a file is a read. Nothing here writes to the note, so a reader
+    /// who taps through every placement leaves its edit timestamp, its history,
+    /// and its writing exactly as they were.
+    private func refreshInlineAttachments() {
+        let preview = $placementPreview
+
+        inlineAttachments = InlineAttachmentContext(
+            source: InlineAttachmentSource(
+                attachments: NoteAttachments.attachments(of: note)
+            )
+        ) { attachment in
+            guard let url = attachment.url else {
+                return
+            }
+
+            preview.wrappedValue = PreviewedAttachment(
+                id: attachment.id,
+                url: url,
+                filename: attachment.descriptor.originalFilename
+            )
         }
     }
 

@@ -38,6 +38,15 @@ import UIKit
 struct MarkdownLivePreview: View {
     @Binding var source: String
 
+    /// Where the body is being edited, reported for the editor's insertion
+    /// action to place an attachment at.
+    ///
+    /// Written on every keystroke and every caret move, which is why it is a
+    /// box rather than state: nothing on screen depends on it, and redrawing
+    /// the editor for it would put work back onto the path this feature must
+    /// not slow down.
+    let bodyCaret: MarkdownBodyCaret
+
     /// The last division of the note.
     ///
     /// Its regions describe the current source everywhere except inside the
@@ -129,7 +138,25 @@ struct MarkdownLivePreview: View {
     ///   - region: The region to draw.
     ///   - shift: The offset between the division and the current source.
     /// - Returns: The region's blocks, with a target over them.
+    @ViewBuilder
     private func renderedRegion(
+        _ region: MarkdownSourceMap.Region,
+        shift: Int
+    ) -> some View {
+        if let attachmentID = InlineAttachments.attachmentID(of: region) {
+            placedAttachment(attachmentID, in: region, shift: shift)
+        } else {
+            markdownRegion(region, shift: shift)
+        }
+    }
+
+    /// One ordinary region drawn the way the reading screen draws it.
+    ///
+    /// - Parameters:
+    ///   - region: The region to draw.
+    ///   - shift: The offset between the division and the current source.
+    /// - Returns: The region's blocks, with a target over them.
+    private func markdownRegion(
         _ region: MarkdownSourceMap.Region,
         shift: Int
     ) -> some View {
@@ -157,6 +184,123 @@ struct MarkdownLivePreview: View {
         .accessibilityAction(named: "Edit Markdown Source") {
             activate(atUTF16Offset: start, from: nil)
         }
+    }
+
+    /// One of the note's files, drawn where it was placed and with the controls
+    /// that move it.
+    ///
+    /// A placement is a block rather than a piece of prose, so it is not
+    /// entered for editing by a tap: tapping it opens the file. Its Markdown is
+    /// still reachable, through the same named action every other region
+    /// offers, so the marker is never hidden from the person who wrote it.
+    ///
+    /// Movement is offered as two directions rather than as a drag. Document
+    /// order is the only order this feature has, and a pair of buttons is the
+    /// same gesture for everyone, including a reader using VoiceOver or Switch
+    /// Control, where a drag is not.
+    ///
+    /// - Parameters:
+    ///   - id: The attachment the region places.
+    ///   - region: The region holding the marker.
+    ///   - shift: The offset between the division and the current source.
+    /// - Returns: The attachment and its controls.
+    private func placedAttachment(
+        _ id: UUID,
+        in region: MarkdownSourceMap.Region,
+        shift: Int
+    ) -> some View {
+        let start = region.utf16Range.lowerBound + shift
+
+        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            MarkdownBlockView(block: .attachment(id: id))
+
+            placementControls(for: region)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, topPadding(before: region.id))
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Edit Markdown Source") {
+            activate(atUTF16Offset: start, from: nil)
+        }
+    }
+
+    /// The controls that reposition a placement or take it out of the note.
+    ///
+    /// Quiet on purpose: this is a document, not a toolbar. Each control keeps
+    /// a full target and is named in words, and none of them is distinguished
+    /// by color.
+    ///
+    /// - Parameter region: The region holding the marker.
+    /// - Returns: The row of controls.
+    private func placementControls(
+        for region: MarkdownSourceMap.Region
+    ) -> some View {
+        HStack(spacing: Theme.Spacing.small) {
+            placementControl(
+                symbol: "arrow.up",
+                label: "Move Attachment Up",
+                isEnabled: region.id > 0
+            ) {
+                move(placement: region.id, .up)
+            }
+
+            placementControl(
+                symbol: "arrow.down",
+                label: "Move Attachment Down",
+                isEnabled: region.id < map.regions.count - 1
+            ) {
+                move(placement: region.id, .down)
+            }
+
+            placementControl(
+                symbol: "minus.circle",
+                label: "Remove Attachment From Note Text",
+                hint: "The file stays attached to the note",
+                isEnabled: true
+            ) {
+                removePlacement(region.id)
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// One of the controls under a placement.
+    ///
+    /// - Parameters:
+    ///   - symbol: The SF Symbol to draw.
+    ///   - label: What the control is called, spoken and never written on
+    ///     screen, since a document is not the place for three captions.
+    ///   - hint: What it does, when that is not obvious from the name.
+    ///   - isEnabled: Whether the action is available here.
+    ///   - action: What to do.
+    /// - Returns: The control.
+    private func placementControl(
+        symbol: String,
+        label: String,
+        hint: String = "",
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.Colors.textTertiary)
+                .frame(
+                    minWidth: Theme.Layout.minimumRowHeight,
+                    minHeight: Theme.Layout.minimumRowHeight
+                )
+                .contentShape(.rect)
+        }
+        // Borderless rather than plain, which is not a style choice. Live
+        // preview sits inside a form row, and a row treats the plain buttons
+        // in it as one target: every control under a placement fired whichever
+        // button the row had picked, so moving an image opened a PDF instead.
+        // That was found by tapping them, not by reading the code.
+        .buttonStyle(.borderless)
+        .disabled(!isEnabled)
+        .accessibilityLabel(label)
+        .accessibilityHint(hint)
     }
 
     /// The region currently being written, shown as its own Markdown source.
@@ -290,6 +434,8 @@ struct MarkdownLivePreview: View {
             return nil
         }
 
+        bodyCaret.utf16Offset = activeRange.lowerBound + caret
+
         return splitActiveRegion(regionText: text, in: source, caret: caret)
     }
 
@@ -321,6 +467,7 @@ struct MarkdownLivePreview: View {
         syncedSource = edited
         source = edited
         activeRange = range
+        bodyCaret.utf16Offset = range.lowerBound + caret
 
         return splitActiveRegion(regionText: text, in: edited, caret: caret)
     }
@@ -417,6 +564,7 @@ struct MarkdownLivePreview: View {
         activeIndex = region.id
         activeRange = region.utf16Range
         activationGeneration += 1
+        bodyCaret.utf16Offset = caret
 
         return MarkdownRegionReshape(
             text: MarkdownSourceMap.substring(of: body, utf16Range: region.utf16Range),
@@ -447,6 +595,7 @@ struct MarkdownLivePreview: View {
 
         syncedSource = joined
         source = joined
+        bodyCaret.utf16Offset = caret
 
         guard let activeIndex, activeIndex > 0, map.regions.indices.contains(activeIndex) else {
             let moved = (activeRange.lowerBound - width)..<(activeRange.upperBound - width)
@@ -494,7 +643,63 @@ struct MarkdownLivePreview: View {
         activeIndex = region.id
         activeRange = region.utf16Range
         activationGeneration += 1
+        bodyCaret.utf16Offset = region.utf16Range.lowerBound
         request(point.map { .point($0) } ?? .offset(0))
+    }
+
+    // MARK: Placements
+
+    /// Moves a placed attachment one block through the document.
+    ///
+    /// Only the marker's own characters move, and the rewrite goes through the
+    /// draft exactly as typing does, so Save and Cancel cover it without a rule
+    /// of their own.
+    ///
+    /// - Parameters:
+    ///   - id: The placement's region in the current division.
+    ///   - direction: Which way to move it.
+    private func move(placement id: Int, _ direction: InlineAttachments.MoveDirection) {
+        guard let moved = InlineAttachments.moving(placement: id, direction, in: source) else {
+            return
+        }
+
+        adopt(moved.source, caret: moved.caretUTF16Offset)
+    }
+
+    /// Takes a placement out of the note text.
+    ///
+    /// The attachment itself is untouched: it stays on the note, its file stays
+    /// on disk, and it can be placed again. Deleting the file is a separate and
+    /// deliberate action in the editor's attachments list.
+    ///
+    /// - Parameter id: The placement's region in the current division.
+    private func removePlacement(_ id: Int) {
+        guard let placement = map.region(id: id),
+              let removed = InlineAttachments.removing(placement: id, in: source)
+        else {
+            return
+        }
+
+        adopt(removed, caret: placement.utf16Range.lowerBound)
+    }
+
+    /// Takes on a body this view rewrote itself.
+    ///
+    /// The division is redone in full rather than repaired, because a placement
+    /// changing position is a deliberate action rather than a keystroke: it is
+    /// not on the path where dividing a long note costs typed characters.
+    ///
+    /// - Parameters:
+    ///   - body: The rewritten note body.
+    ///   - caret: Where editing should be considered to be afterwards.
+    private func adopt(_ body: String, caret offset: Int) {
+        source = body
+        syncedSource = body
+        map = MarkdownSourceMap(body)
+        activeIndex = nil
+        activeRange = 0..<0
+        caretRequest = nil
+        bodyCaret.utf16Offset = min(offset, body.utf16.count)
     }
 
     /// Leaves editing once the keyboard has genuinely gone away.
@@ -525,14 +730,19 @@ struct MarkdownLivePreview: View {
     /// Divides the current source from scratch, with nothing active.
     ///
     /// Used when the body arrived from outside this view, which is what a switch
-    /// away to Source mode and back looks like from here.
+    /// away to Source mode and back looks like from here, and what placing an
+    /// attachment from the toolbar looks like too. Nothing stays active, because
+    /// a region identity from the previous division would name different text in
+    /// the new one.
     private func synchronize() {
         map = MarkdownSourceMap(source)
         syncedSource = source
+        activeIndex = nil
+        activeRange = 0..<0
+        caretRequest = nil
 
-        if let activeIndex, !map.regions.indices.contains(activeIndex) {
-            self.activeIndex = nil
-            activeRange = 0..<0
+        if let offset = bodyCaret.utf16Offset {
+            bodyCaret.utf16Offset = min(offset, source.utf16.count)
         }
     }
 
@@ -627,7 +837,7 @@ struct MarkdownLivePreview: View {
         """
 
     ScrollView {
-        MarkdownLivePreview(source: $noteBody)
+        MarkdownLivePreview(source: $noteBody, bodyCaret: MarkdownBodyCaret())
             .padding(Theme.Spacing.large)
     }
     .background(Theme.Colors.surface)

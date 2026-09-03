@@ -306,6 +306,38 @@ struct NotePDFRendererTests {
     }
 
     @Test
+    func aPlacedAttachmentIsLeftOutAndCostsTheNoteNothingElse() throws {
+        let identifier = UUID(uuidString: "3F2504E0-4F89-11D3-9A0C-0305E82C3301")!
+        let body = """
+        Walked the north wing.
+
+        \(InlineAttachmentMarker.text(for: identifier))
+
+        Photograph the stairwell next time.
+        """
+
+        let extracted = try text(of: pdfData(body: body))
+
+        // A PDF carries authored content, and a note's files have never been
+        // part of that. The reference is not drawn, and neither is its raw
+        // syntax, which would be worse than leaving it out.
+        #expect(extracted.contains("Walked the north wing."))
+        #expect(extracted.contains("Photograph the stairwell next time."))
+        #expect(!extracted.contains(identifier.uuidString))
+        #expect(!extracted.contains("{{attachment"))
+    }
+
+    @Test
+    func aMarkerInsideCodeStillExportsAsTheCodeItIs() throws {
+        let identifier = UUID(uuidString: "3F2504E0-4F89-11D3-9A0C-0305E82C3301")!
+        let body = "```\n\(InlineAttachmentMarker.text(for: identifier))\n```"
+
+        let extracted = try text(of: pdfData(body: body))
+
+        #expect(extracted.contains("{{attachment"))
+    }
+
+    @Test
     func theRendererTakesNoCollapsedStateAtAll() {
         // The exporter's whole input is authored content. There is nowhere for a
         // reading view's fold state to enter, which is the invariant rather than

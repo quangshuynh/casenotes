@@ -23,6 +23,12 @@ struct NoteRevisionView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingRestore = false
 
+    /// The file a placement in the historical body opened in Quick Look.
+    @State private var placementPreview: PreviewedAttachment?
+
+    /// The note's current files, for the placements this version's text makes.
+    @State private var inlineAttachments = InlineAttachmentContext()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
@@ -64,6 +70,40 @@ struct NoteRevisionView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This version becomes the current note. The version you have now is kept in version history, and any drawing stays as it is.")
+        }
+        .fullScreenCover(item: $placementPreview) { preview in
+            QuickLookPreview(url: preview.url, filename: preview.filename) {
+                placementPreview = nil
+            }
+            .ignoresSafeArea()
+        }
+        .environment(\.inlineAttachments, inlineAttachments)
+        .onAppear(perform: refreshInlineAttachments)
+    }
+
+    /// Resolves this version's placements against the note's current files.
+    ///
+    /// Version history records authored text and never files, so a historical
+    /// body is resolved against the files the note holds now. A placement whose
+    /// file has since been removed says so, which is the same honest answer the
+    /// note itself gives.
+    private func refreshInlineAttachments() {
+        let preview = $placementPreview
+
+        inlineAttachments = InlineAttachmentContext(
+            source: InlineAttachmentSource(
+                attachments: NoteAttachments.attachments(of: note)
+            )
+        ) { attachment in
+            guard let url = attachment.url else {
+                return
+            }
+
+            preview.wrappedValue = PreviewedAttachment(
+                id: attachment.id,
+                url: url,
+                filename: attachment.descriptor.originalFilename
+            )
         }
     }
 

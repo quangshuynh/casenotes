@@ -75,6 +75,14 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
   reaches the file system only through the store.
 - `AttachmentDescriptor` derives what a row says about a file: its type, its
   size, and the phrase a screen reader hears.
+- `InlineAttachmentMarker` owns the syntax that places a file inside a note's
+  Markdown, and finds the lines that could be one.
+- `InlineAttachments` owns what a placement is and what may be done to it:
+  listing placements, writing one at an editing position, moving one a block
+  through the document, and lifting one out. Every operation rewrites the body
+  and nothing else.
+- `InlineAttachmentSource` resolves a placement's identity against the files a
+  note actually holds, answering with what to draw or with nothing at all.
 - `NoteExport` defines the exact text and file representation leaving the app.
 - `NotePDFRenderer` lays a note out as a paginated PDF document, working from a
   value copy of the note's authored content rather than from any view.
@@ -86,6 +94,16 @@ behavior are documented separately in [App Lock and Privacy](app-lock-and-privac
 Folder hierarchy is derived rather than stored. A location is built by walking
 the parent chain when it is displayed, so renaming or moving a folder needs no
 rewrite of anything beneath it and no path string can go stale.
+
+A placed file is a parsed block like any other. The reference is invisible to
+Foundation, which reads it as ordinary text and discards the difference between
+one that was written and one that was escaped, so `MarkdownDocument` cuts each
+candidate line out of the source, parses the piece before it on its own, and
+accepts the placement only when those pieces are exactly the blocks the whole
+body already has at that position. That is the same argument `MarkdownSourceMap`
+makes about boundaries, and it is what keeps a reference inside fenced code,
+indented code, inline code, or an escape sequence as the literal text it is. A
+body holding no reference text pays one substring search for all of it.
 
 `MarkdownBlockView` is the one place a parsed block becomes pixels, so reading
 and Live Preview cannot drift apart. `MarkdownLivePreview` lays out the regions
@@ -139,6 +157,13 @@ Removal is ordered deliberately: the store is written before the bytes are
 deleted. The two cannot be made one transaction, and this direction means an
 interruption can only leave a file nothing points at, never a note listing an
 attachment it cannot open.
+
+A file placed in the writing is a reference to that same record rather than a
+second copy, so nothing above changes when one is placed. Placed images are
+decoded off the main actor at a bounded size through Image I/O and kept in a
+small cache keyed by the attachment's identity, so a note holding photographs
+does not decode them again on every keystroke, and a file that moves out of
+staging on save costs no second decode.
 
 Previewing uses `QLPreviewController` through a small representable. Quick Look
 already reads every format the importer accepts, so no document renderer is

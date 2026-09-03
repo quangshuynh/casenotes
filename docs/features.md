@@ -159,8 +159,46 @@ notes, so it reaches no attachment either.
 A file that has gone missing costs that file and nothing else. Its row says so
 and cannot be opened, and the rest of the note reads normally.
 
-Attachments are not included in Markdown or PDF exports. See
-[Content and Export](content-and-export.md).
+### Placing a file in the writing
+
+A file the note holds can also be placed inside the note's Markdown, so a
+photograph sits beside the paragraph it belongs to rather than only in a list at
+the end. Insert Attachment in the editor toolbar, and Insert Into Note beside
+the attachments list, offer the note's own files and a way to attach a new one.
+The chosen file is placed at the cursor, at the boundary of the block the cursor
+is in, so a heading or a fenced block is never cut in half.
+
+A placement is a reference rather than a copy. The Markdown records the
+attachment's identity, which is what makes a placement survive a rename and stay
+valid however many times the file is placed. Source mode shows the reference as
+the text it is, Reading mode and Live Preview draw the file, and one file can be
+placed as many times as it is useful.
+
+An image is drawn in the note at a bounded size with its aspect ratio kept and
+its name beneath it. Every other kind of file is a compact row naming it, and
+both open in the system document preview when tapped. CaseNotes renders no
+document format itself.
+
+In Live Preview a placement carries three controls: move it up a block, move it
+down a block, and take it out of the note's text. Only its position in the
+Markdown changes, so Save and Cancel cover it exactly as they cover typing.
+Taking a placement out is not deleting the file: the attachment stays on the
+note and can be placed again. Deleting the file is the attachments list's own
+delete action.
+
+Deleting a file the writing still refers to leaves that reference alone rather
+than rewriting the note. The reference then reads as an unavailable attachment,
+which says in words that the file is no longer part of the note, and the text
+around it is untouched. A reference to a file whose bytes have gone says the
+file is missing, in the same words a listed attachment uses.
+
+Reference text written inside a code fence, inside inline code, or after a
+backslash stays the literal text it is. A reference only becomes an attachment
+where the note's own parse agrees that it is a block of its own.
+
+Attachments are not included in Markdown or PDF exports, though a Markdown
+export carries the references verbatim because they are part of the authored
+source. See [Content and Export](content-and-export.md).
 
 ## Sharing and export
 
