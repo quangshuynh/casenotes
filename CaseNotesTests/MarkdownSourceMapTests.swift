@@ -472,6 +472,49 @@ struct MarkdownSourceMapTests {
         #expect(cache.map(for: "# One\n\nThree") != first)
     }
 
+    // MARK: Telling a proved division from a repaired one
+
+    @Test
+    func aWholeBodyDivisionSaysItWasProved() {
+        // Live preview reuses a division rather than repeating it, and this is
+        // the flag it reads. Entering a region after opening a note asked for
+        // two divisions of the same unchanged body, and on a long note the
+        // second was around a tenth of a second of main-thread work for an
+        // answer already in hand.
+        let map = MarkdownSourceMap("# One\n\nTwo\n\n- three\n")
+
+        #expect(map.isProven)
+        #expect(map.source == "# One\n\nTwo\n\n- three\n")
+    }
+
+    @Test
+    func aLocallyRepairedDivisionSaysItWasNotProved() {
+        // A keystroke repair trusts its caller, so it must not be mistaken for
+        // a settled answer: re-proving it is what makes half-typed Markdown,
+        // such as a fence that is not closed yet, settle once a region is
+        // entered.
+        let result = repairing("Alpha\n\nBeta\n", region: 0, to: "Alpha.\n\nInserted.\n\n")
+
+        guard let repaired = result.repaired else {
+            Issue.record("Repair refused")
+            return
+        }
+
+        #expect(!repaired.isProven)
+        #expect(repaired.source == result.body)
+        #expect(MarkdownSourceMap(result.body).isProven)
+    }
+
+    @Test
+    func reusingAProvedDivisionOfUnchangedTextIsTheSameAnswer() {
+        // What makes the reuse safe: a proved map whose source is still the
+        // body on screen is exactly what dividing again would produce.
+        let source = "# Site\n\nAlpha **bold**.\n\n```swift\nlet x = 1\n```\n\n- one\n  - two\n- three\n\n> quote\n"
+        let map = MarkdownSourceMap(source)
+
+        #expect(map == MarkdownSourceMap(map.source))
+    }
+
     // MARK: Repairing a division locally
 
     /// Rewrites one region and repairs the division the way live preview does

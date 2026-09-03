@@ -125,7 +125,9 @@ Constraints when touching them:
   and no rewriting of a user's Markdown behind their back.
 - Region boundaries come from `MarkdownSourceMap`, which proves each candidate
   against the existing parse. Do not split the source on newlines, and do not
-  add a second parser or a third-party engine.
+  add a second parser or a third-party engine. A map says whether it was proved
+  or locally repaired, and only a proved one may be reused instead of dividing
+  again.
 - Live Preview edits `NoteDraft`. It must not bind to SwiftData, must not
   autosave, and must not write a revision or move `updatedAt`. Mode switching
   changes nothing at all.

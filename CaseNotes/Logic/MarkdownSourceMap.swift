@@ -98,12 +98,26 @@ struct MarkdownSourceMap: Equatable {
 
     let regions: [Region]
 
+    /// Whether every boundary in this division was proved against the parse.
+    ///
+    /// True for a division of a whole body, false for one a keystroke repaired
+    /// locally, which trusts its caller rather than proving anything. The two
+    /// agree for an ordinary edit and can differ while Markdown is half typed,
+    /// so a caller that needs a settled answer has to know which kind it holds.
+    ///
+    /// It is what lets a division be reused instead of repeated: a proven map
+    /// whose ``source`` is still the body being shown is the same answer
+    /// dividing again would produce, and dividing a long note is tens of
+    /// milliseconds of main-thread work.
+    let isProven: Bool
+
     /// Divides a note body into editable regions.
     ///
     /// - Parameter source: The raw note body, exactly as it is stored.
     init(_ source: String) {
         self.source = source
         regions = Self.divide(source)
+        isProven = true
     }
 
     /// Assembles a map from regions that are already known to cover a body.
@@ -127,6 +141,7 @@ struct MarkdownSourceMap: Equatable {
     init(source: String, regions: [Region]) {
         self.source = source
         self.regions = regions
+        isProven = false
     }
 
     /// The text a region owns.
