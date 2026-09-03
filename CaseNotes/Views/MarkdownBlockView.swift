@@ -146,6 +146,12 @@ struct MarkdownBlockStack: View {
         ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
             MarkdownBlockView(block: block)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // A block keeps its ideal height rather than accepting a
+                // shorter offer. Reading sits in a scroll view and is never
+                // offered one, but live preview sits in a form row beside a
+                // text view that states an exact height, and prose there was
+                // being compressed until it truncated mid-sentence.
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(
                     .top,
                     index == 0 ? 0 : Self.spacingAbove(block, previous: blocks[index - 1])
